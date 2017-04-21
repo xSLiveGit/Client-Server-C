@@ -1,6 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS 0
+
 #include "client.h"
 #include <stdio.h>
-
+#include <string.h>
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
 STATUS Run(PCLIENT pclient);
@@ -20,8 +22,9 @@ STATUS CreateClient(PCLIENT pclient, char* pipeName)
 	}
 
 	pclient->pipeName = pipeName;
+	pclient->clientProtocol = (PCLIENT_PROTOCOL)malloc(sizeof(CLIENT_PROTOCOL));
 	CreateProtocol(pclient->clientProtocol);
-	pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, pipeName);
+	//pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, pipeName);
 	pclient->OpenConnexion = &OpenConnexion;
 	pclient->RemoveClient = &RemoveClient;
 	pclient->Run = &Run;
@@ -49,7 +52,7 @@ STATUS RemoveClient(PCLIENT pclient)
 	// --- Process ---
 
 	status |= pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
-
+	free(pclient->clientProtocol);
 	// --- Exit/CleanUp ---
 	return status;
 }
@@ -71,10 +74,13 @@ STATUS Run(PCLIENT pclient)
 	}
 	PACKET list[1];
 	PPACKET readedList = NULL;
-	char buffer[4096] = "ana";
+	char buffer[4096] = "ana\0";
 	PACKET pachet;
 	pachet.size = 3;
-	strcpy_s(pachet.buffer, 3, buffer);
+
+	// ReSharper disable CppDeprecatedEntity
+	strcpy(pachet.buffer, buffer);
+	// ReSharper restore CppDeprecatedEntity
 	list[0] = pachet;
 	status |= pclient->clientProtocol->SendNetworkMessage(pclient->clientProtocol, 1, list,FALSE);
 	if(SUCCESS != status)

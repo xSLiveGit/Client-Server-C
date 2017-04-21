@@ -19,8 +19,9 @@ STATUS CreateServer(PSERVER pserver, char* pipeName)
 
 	pserver->referenceCounter = 0;
 	pserver->pipeName = pipeName;
+	pserver->serverProtocol = (SERVER_PROTOCOL*)malloc(sizeof(SERVER_PROTOCOL));
 	CreateProtocol(pserver->serverProtocol);
-	pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pipeName);
+	//pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pipeName);
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
@@ -57,9 +58,9 @@ STATUS RemoveServer(PSERVER pserver)
 	// --- Process ---
 	pserver->SetStopFlag(pserver);
 	while (pserver->referenceCounter);
-
 	status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
-	
+	free(pserver->serverProtocol);
+
 	// --- Exit/CleanUp ---
 	return status;
 }
@@ -99,8 +100,19 @@ STATUS Run(PSERVER pserver)
 		goto Exit;
 	}
 
-	pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
-
+	status = pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
+	if (SUCCESS != status)
+	{
+		printf_s("Unsuccesfuly read string - server");
+		goto Exit;
+	}
+	printf("%s", list[0].buffer);
+	status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list,TRUE);
+	if (SUCCESS != status)
+	{
+		printf_s("Unsuccesfuly send string - server");
+		goto Exit;
+	}
 Exit:
 	return status;
 }

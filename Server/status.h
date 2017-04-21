@@ -11,6 +11,6 @@
 typedef struct
 {
 	int size;
-	char* buffer;
+	char buffer[4096];
 } PACKET,*PPACKET;
 #endif //_STATUS_H_

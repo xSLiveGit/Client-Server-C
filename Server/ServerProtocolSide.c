@@ -1,9 +1,11 @@
+#define _CRT_SECURE_NO_WARNINGS 0
+
 #include "ServerProtocolSide.h"
-#define PREFIX_NAMED_PIPE "\\\\.\\pipe\\"
+#define PREFIX_NAMED_PIPE "\\\\.\\pipe\\\0"
 #include <string.h>
 #include <Windows.h>
 #include <stdio.h>
-
+#include <strsafe.h>
 //STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName);
 //STATUS CloseConnexion(PSERVER_PROTOCOL serverProtocol);
 //STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc);
@@ -20,7 +22,7 @@ STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer, char** resul
 		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
 		10,								//_In_        DWORD        nNumberOfBytesToRead,
-		&readedBytes,							//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
 	strcpy_s(*result, readedBytes, *buffer);
@@ -39,8 +41,8 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 	// --- Initializations ---
 	status = 0;
 	res = TRUE;
-	tempFileName = NULL;
-
+	tempFileName = (char*)malloc(4096 * sizeof(char));
+	tempFileName[0] = "\0";
 	// --- Process ---
 	if (NULL == protocol)
 	{
@@ -49,19 +51,23 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 	}
 
 	protocol->pipeName = fileName;
-	strcpy_s(tempFileName, strlen(PREFIX_NAMED_PIPE) + 1, PREFIX_NAMED_PIPE);
-	strcat_s(tempFileName, strlen(fileName) + 1, fileName);
+	//StringCchCopyA(tempFileName, strlen(PREFIX_NAMED_PIPE), PREFIX_NAMED_PIPE);
+	strcpy_s(tempFileName,13, PREFIX_NAMED_PIPE);
+	// ReSharper disable CppDeprecatedEntity
+	strcat(tempFileName, fileName);
+	// ReSharper restore CppDeprecatedEntity
+	//StringCchCatA(tempFileName, strlen(fileName), fileName);
 	protocol->pipeHandle = CreateNamedPipeA
-		(
-			tempFileName,				//_In_     LPCTSTR               lpName,
-			PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
-			PIPE_TYPE_MESSAGE,			//_In_     DWORD                 dwPipeMode,
-			PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
-			4096,						//_In_     DWORD                 nOutBufferSize,
-			4096,						//_In_     DWORD                 nInBufferSize,
-			0,							//_In_     DWORD                 nDefaultTimeOut,
-			NULL						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
-			);
+	(
+		tempFileName,				//_In_     LPCTSTR               lpName,
+		PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
+		PIPE_TYPE_MESSAGE,			//_In_     DWORD                 dwPipeMode,
+		PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
+		4096,						//_In_     DWORD                 nOutBufferSize,
+		4096,						//_In_     DWORD                 nInBufferSize,
+		0,							//_In_     DWORD                 nDefaultTimeOut,
+		NULL						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
+	);
 
 	res = ConnectNamedPipe
 		(
@@ -210,34 +216,17 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	buffer[readedBytes] = '\0';
 	*packetsNumber = atoi(buffer);
 
-	for (indexPacket = 0; indexPacket < *packetsNumber; ++indexPacket)
+	for (indexPacket = 0; indexPacket < *packetsNumber - 1; ++indexPacket)
 	{
 		res = ReadFile(
 			serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
 			buffer,							//_Out_       LPVOID       lpBuffer,
-			10,								//_In_        DWORD        nNumberOfBytesToRead,
+			4096,						//_In_        DWORD        nNumberOfBytesToRead,
 			&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 			NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
 
-		if (!res)
-		{
-			status |= COMUNICATION_ERROR;
-			goto Exit;
-		}
-
-		//		packetSize = sprintf_s(buffer, 10, "%ul");
-		buffer[readedBytes] = '\0';
-		packetSize = atoi(buffer);
-		res = ReadFile(
-			serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
-			buffer,							//_Out_       LPVOID       lpBuffer,
-			packetSize,						//_In_        DWORD        nNumberOfBytesToRead,
-			&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
-			NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
-			);
-
-		if (!res || readedBytes != packetSize)
+		if (!res || readedBytes != 4096)
 		{
 			status |= COMUNICATION_ERROR;
 			goto Exit;
@@ -245,10 +234,27 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 
 		//construct new message. It will be modified for constructing package processed by multiple threads
 		packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
-		packetsList[indexPacket]->size = packetSize;
-		strcpy_s(packetsList[indexPacket]->buffer, packetSize, buffer);
+		packetsList[indexPacket]->size = readedBytes;
+		strcpy_s(packetsList[indexPacket]->buffer, readedBytes, buffer);
 	}
+	res = ReadFile(
+		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
+		buffer,							//_Out_       LPVOID       lpBuffer,
+		4096,						//_In_        DWORD        nNumberOfBytesToRead,
+		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
+		);
 
+	if (!res)
+	{
+		status |= COMUNICATION_ERROR;
+		goto Exit;
+	}
+	buffer[readedBytes] = '\0';
+	//construct new message. It will be modified for constructing package processed by multiple threads
+	packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
+	packetsList[indexPacket]->size = readedBytes;
+	strcpy(packetsList[indexPacket]->buffer, buffer);
 Exit:
 	free(buffer);
 	return status;
@@ -293,7 +299,7 @@ STATUS CreateProtocol(PSERVER_PROTOCOL protocol)
 	status = SUCCESS;
 
 	// --- Process ---
-	protocol->InitializeConnexion = &InitializeConnexion;
+	(*protocol).InitializeConnexion = &InitializeConnexion;
 	protocol->CloseConnexion = &CloseConnexion;
 	protocol->SendNetworkMessage = &SendNetworkMessage;
 	protocol->ReadNetworkMessage = &ReadNetworkMessage;

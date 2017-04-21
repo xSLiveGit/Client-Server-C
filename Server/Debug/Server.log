@@ -1,8 +1,11 @@
-﻿  main.c
+﻿  status.c
+  main.c
   ServerProtocolSide.c
-c:\users\sergiu\documents\visual studio 2015\projects\c client server\server\serverprotocolside.c(185): warning C4189: 'tempMessage': local variable is initialized but not referenced
+d:\faculta\an2\cursc\c client server\server\serverprotocolside.c(45): warning C4047: '=': 'char' differs in levels of indirection from 'char [2]'
+d:\faculta\an2\cursc\c client server\server\serverprotocolside.c(191): warning C4189: 'tempMessage': local variable is initialized but not referenced
+d:\faculta\an2\cursc\c client server\server\serverprotocolside.c(190): warning C4101: 'packetSize': unreferenced local variable
   server.c
-c:\users\sergiu\documents\visual studio 2015\projects\c client server\client\server.c(32): warning C4100: 'encryptionKey': unreferenced formal parameter
+d:\faculta\an2\cursc\c client server\client\server.c(33): warning C4100: 'encryptionKey': unreferenced formal parameter
   Generating Code...
-  Server.vcxproj -> C:\Users\Sergiu\documents\visual studio 2015\Projects\C Client Server\Debug\Server.exe
-  Server.vcxproj -> C:\Users\Sergiu\documents\visual studio 2015\Projects\C Client Server\Debug\Server.pdb (Partial PDB)
+  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Server.exe
+  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Server.pdb (Partial PDB)

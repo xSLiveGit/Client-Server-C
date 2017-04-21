@@ -4,8 +4,8 @@ int main()
 {
 	SERVER server;
 
-	CreateServer(&server,"nume");
-	server.OpenConnexion(&server);
+	CreateServer(&server,"nume\0");
+	//server.OpenConnexion(&server);
 	server.Run(&server);
 	server.RemoveServer(&server);
 

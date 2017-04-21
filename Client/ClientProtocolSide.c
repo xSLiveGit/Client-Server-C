@@ -1,5 +1,6 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "ClientProtocolSide.h"
-#define PREFIX_NAMED_PIPE "\\\\.\\pipe\\"
+#define PREFIX_NAMED_PIPE "\\\\.\\pipe\\\0"
 #include <string.h>
 #include <Windows.h>
 #include <stdio.h>
@@ -65,11 +66,14 @@ STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName)
 		goto EXIT;
 	}
 
-	protocol->pipeName = fileName;
-	strcpy_s(tempFileName, strlen(PREFIX_NAMED_PIPE) + 1, PREFIX_NAMED_PIPE);
-	strcat_s(tempFileName, strlen(fileName) + 1, fileName);
+	tempFileName = (char*)malloc(4096 * sizeof(char));
+	//StringCchCopyA(tempFileName, strlen(PREFIX_NAMED_PIPE), PREFIX_NAMED_PIPE);
+	strcpy_s(tempFileName, 13, PREFIX_NAMED_PIPE);
+	// ReSharper disable CppDeprecatedEntity
+	strcat(tempFileName, fileName);
+	protocol->pipeName = tempFileName;
 
-	//@TODO must create a while(1) statement 
+	// @TODO must create a while(1) statement 
 	protocol->pipeHandle = CreateFileA(
 		protocol->pipeName,					//	_In_     LPCTSTR               lpFileName,
 		GENERIC_READ | GENERIC_WRITE,		//	_In_     DWORD                 dwDesiredAccess,
@@ -82,18 +86,18 @@ STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName)
 
 	dwMode = PIPE_READMODE_MESSAGE;
 	DWORD nr = 4096;
-	res = SetNamedPipeHandleState(
+	SetNamedPipeHandleState(
 		protocol->pipeHandle,	    // pipe handle 
 		&dwMode,					// new pipe mode 
 		&nr,						// don't set maximum bytes 
 		NULL);						// don't set maximum time
 
 
-	if (!res)
+	/*if (!res)
 	{
 		status = CONNEXION_ERROR;
 		goto EXIT;
-	}
+	}*/
 
 	// --- Exit/CleanUp --
 EXIT:
@@ -218,7 +222,6 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 	*packetsList = (PPACKET)malloc(*packetsNumber * sizeof(PACKET));
 	for (indexPacket = 0; indexPacket < *packetsNumber - 1; ++indexPacket)
 	{
-
 
 		res = ReadFile(
 			clientProtocol->pipeHandle,		//_In_        HANDLE       hFile,
