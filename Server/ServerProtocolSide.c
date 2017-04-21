@@ -11,6 +11,7 @@
 //STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc);
 //STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol,int* packetsNumber, PPACKET *packetsList);
 //STATUS ReadUserInformation (PSERVER_PROTOCOL serverProtocol, char** username, char** password);
+// #pragma comment (lib, "DllUtil.lib")
 
 // --------------- Helper Function ----------------
 STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer, char** result)
@@ -25,8 +26,8 @@ STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer, char** resul
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-	strcpy_s(*result, readedBytes, *buffer);
-
+//	strcpy_s(*result, readedBytes, *buffer);
+	memcpy(*result, *buffer, readedBytes);
 	if (!res) return COMUNICATION_ERROR;
 	return SUCCESS;
 }
@@ -82,6 +83,7 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 	}
 	// --- Exit/CleanUp --
 EXIT:
+	free(tempFileName);
 	return status;
 }
 
@@ -221,7 +223,7 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		res = ReadFile(
 			serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
 			buffer,							//_Out_       LPVOID       lpBuffer,
-			4096,						//_In_        DWORD        nNumberOfBytesToRead,
+			4096,							//_In_        DWORD        nNumberOfBytesToRead,
 			&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 			NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
@@ -235,12 +237,13 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		//construct new message. It will be modified for constructing package processed by multiple threads
 		packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
 		packetsList[indexPacket]->size = readedBytes;
-		strcpy_s(packetsList[indexPacket]->buffer, readedBytes, buffer);
+//		strcpy_s(packetsList[indexPacket]->buffer, readedBytes, buffer);
+		memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
 	}
 	res = ReadFile(
 		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
-		4096,						//_In_        DWORD        nNumberOfBytesToRead,
+		4096,							//_In_        DWORD        nNumberOfBytesToRead,
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
@@ -250,11 +253,13 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		status |= COMUNICATION_ERROR;
 		goto Exit;
 	}
-	buffer[readedBytes] = '\0';
+	//buffer[readedBytes] = '\0';
 	//construct new message. It will be modified for constructing package processed by multiple threads
 	packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
 	packetsList[indexPacket]->size = readedBytes;
-	strcpy(packetsList[indexPacket]->buffer, buffer);
+//	strcpy(packetsList[indexPacket]->buffer, buffer);
+	memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
+
 Exit:
 	free(buffer);
 	return status;

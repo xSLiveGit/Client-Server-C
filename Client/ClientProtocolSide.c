@@ -23,8 +23,8 @@ STATUS ReadFromPipe(PCLIENT_PROTOCOL serverProtocol, char** buffer, char** resul
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-	strcpy_s(*result, readedBytes, *buffer);
-
+	//strcpy_s(*result, readedBytes, *buffer);
+	memcpy(*result, *buffer, readedBytes);
 	if (!res) return COMUNICATION_ERROR;
 	return SUCCESS;
 }
@@ -69,6 +69,7 @@ STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName)
 	tempFileName = (char*)malloc(4096 * sizeof(char));
 	//StringCchCopyA(tempFileName, strlen(PREFIX_NAMED_PIPE), PREFIX_NAMED_PIPE);
 	strcpy_s(tempFileName, 13, PREFIX_NAMED_PIPE);
+
 	// ReSharper disable CppDeprecatedEntity
 	strcat(tempFileName, fileName);
 	protocol->pipeName = tempFileName;
@@ -101,6 +102,7 @@ STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName)
 
 	// --- Exit/CleanUp --
 EXIT:
+	free(tempFileName);
 	return status;
 }
 
@@ -239,7 +241,8 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 
 		//construct new message. It will be modified for constructing package processed by multiple threads
 		packetsList[indexPacket]->size = 4096;
-		strcpy_s(packetsList[indexPacket]->buffer, 4096, buffer);
+		//strcpy_s(packetsList[indexPacket]->buffer, 4096, buffer);
+		memcpy(packetsList[indexPacket]->buffer, buffer, 4096);
 	}
 
 	res = ReadFile(
@@ -249,9 +252,12 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-	packetsList[indexPacket]->size = readedBytes;
-	strcpy_s(packetsList[indexPacket]->buffer, readedBytes, buffer);
 
+	buffer[readedBytes] = '\0';
+	packetsList[indexPacket]->size = readedBytes;
+	//aici
+//	strcpy(packetsList[indexPacket]->buffer, buffer);
+	memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
 Exit:
 	free(buffer);
 	return status;

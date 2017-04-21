@@ -1,0 +1,9 @@
+﻿  client.c
+  ClientProtocolSide.c
+  main.c
+  status.c
+  Generating code
+  All 15 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Client.exe
+  Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Client.pdb (Full PDB)

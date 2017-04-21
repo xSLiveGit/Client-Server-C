@@ -5,8 +5,9 @@
 #include <string.h>
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
-STATUS Run(PCLIENT pclient);
-
+STATUS Run(PCLIENT pclient,char*,char*);
+STATUS PrintAllMessages(PPACKET list, unsigned long size, FILE* outputHandle);
+ 
 STATUS CreateClient(PCLIENT pclient, char* pipeName)
 {
 	STATUS status = 0;
@@ -57,30 +58,42 @@ STATUS RemoveClient(PCLIENT pclient)
 	return status;
 }
 
-STATUS Run(PCLIENT pclient)
+STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 {
 	// --- Declarations ---
 	STATUS status;
 	int packetsNumber;
+	PACKET list[1];
+	PPACKET readedList ;
+	char buffer[4096];
+	PACKET pachet;
+	size_t readedCharacters;
+	FILE *inputFileHandle;
+	FILE *outputFileHandle;
+	// --- End declarations ---
+
 	// --- Initializations ---
 	status = SUCCESS;
 	packetsNumber = 0;
-	// --- Process ---
-	
+	readedList = NULL;
+	strcpy(buffer, "");
+	inputFileHandle = NULL;
+	outputFileHandle = NULL;
+	readedCharacters = 0;
+	inputFileHandle = fopen(inputFile, "r");
+	outputFileHandle = fopen(outputFile, "w");
+	// --- End initializations ---
+
+	// --- Process --
 	status |= pclient->OpenConnexion(pclient);
 	if(SUCCESS != status)
 	{
 		goto Exit;
 	}
-	PACKET list[1];
-	PPACKET readedList = NULL;
-	char buffer[4096] = "ana\0";
-	PACKET pachet;
-	pachet.size = 3;
-
-	// ReSharper disable CppDeprecatedEntity
+	
 	strcpy(pachet.buffer, buffer);
-	// ReSharper restore CppDeprecatedEntity
+	readedCharacters = fread(buffer, 1, 4096, inputFileHandle);
+	memcpy(pachet.buffer, buffer, readedCharacters);
 	list[0] = pachet;
 	status |= pclient->clientProtocol->SendNetworkMessage(pclient->clientProtocol, 1, list,FALSE);
 	if(SUCCESS != status)
@@ -88,7 +101,12 @@ STATUS Run(PCLIENT pclient)
 		printf_s("Can't sent.\n");
 		goto Exit;
 	}
+//	printf("client string before encryption process: %s", list[0].buffer);
 	pclient->clientProtocol->ReadNetworkMessage(pclient->clientProtocol, &packetsNumber, &readedList, FALSE);
+//	printf("client string after encryption process: %s", list[0].buffer);
+
+	PrintAllMessages(readedList, packetsNumber, outputFileHandle);
+
 	if (SUCCESS != status)
 	{
 		printf_s("Can't receive.\n");
@@ -97,5 +115,26 @@ STATUS Run(PCLIENT pclient)
 	printf_s("%s", readedList[0].buffer);
 	// --- Exit/CleanUp ---
 Exit:
+	return status;
+}
+
+STATUS PrintAllMessages(PPACKET list, unsigned long size, FILE* outputFileHandle)
+{
+	STATUS status;
+	unsigned int i;
+	int writedCharacters;
+
+	status = SUCCESS;
+	writedCharacters = 0;
+
+	for (i = 0; i < size && (SUCCESS == status); i++)
+	{
+		fwrite(list[i].buffer, 1, list[i].size, outputFileHandle);
+		if(writedCharacters != list[i].size)
+		{
+			status = FILE_ERROR;
+		}
+	}
+
 	return status;
 }

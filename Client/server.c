@@ -2,11 +2,19 @@
 #include <stdio.h>
 #include "server.h"
 
-STATUS CryptMessage(char* originalString, char* encryptionKey, char** encryptedString);
+//	---	Public functions declarations: ---
 STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
 STATUS Run(PSERVER pserver);
+//	---	End public functions declarations: ---
+
+
+//	---	Private functions declarations: ---
+static char globalEncryptionKey[] = "encryptionKey";
+STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int size);
+STATUS CryptAllMessages(PACKET *list, int size, char* encryptionKey);
+//  ---	End private functions declarations: ---
 
 STATUS CreateServer(PSERVER pserver, char* pipeName)
 {
@@ -30,11 +38,26 @@ Exit:
 	return status;
 }
 
-STATUS CryptMessage(char* originalString,char* encryptionKey,char** encryptedString)
+STATUS CryptMessage(char* stringToBeProcessed,char* encryptionKey,unsigned int size)
 {
-	STATUS status = 0;
-	//@TODO
-	*encryptedString = originalString;
+	unsigned int index;
+	unsigned int keyFroCryptLength;
+	STATUS status;
+	
+	if (NULL == stringToBeProcessed || NULL == encryptionKey)
+	{
+		return status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	status = SUCCESS;
+	keyFroCryptLength = strlen(encryptionKey);
+
+	for (index = 0; index < size; index++)
+	{
+		stringToBeProcessed[index] ^= encryptionKey[index % keyFroCryptLength];
+	}
+
+Exit:
 	return status;
 }
 
@@ -67,9 +90,13 @@ STATUS RemoveServer(PSERVER pserver)
 
 STATUS SetStopFlag(PSERVER pserver)
 {
+	// --- Declarations ---
 	STATUS status;
+
+	// --- Initializations ---
 	status = SUCCESS;
 
+	// --- Process ---
 	if(NULL == pserver)
 	{
 		status |= NULL_POINTER_ERROR;
@@ -77,10 +104,15 @@ STATUS SetStopFlag(PSERVER pserver)
 	}
 	
 	pserver->flagOptions |= REJECT_CLIENTS_FLAG;
+
+	// --- Exit/CleanUp ---
 Exit:
 	return status;
 }
 
+/**
+ *		_IN_			PSERVER			pserver - 
+ */
 STATUS Run(PSERVER pserver)
 {
 	STATUS status;
@@ -106,13 +138,35 @@ STATUS Run(PSERVER pserver)
 		printf_s("Unsuccesfuly read string - server");
 		goto Exit;
 	}
-	printf("%s", list[0].buffer);
+//	printf("server string before encryption process: %s", list[0].buffer);
+	//ExportFirstNCharacters(list[0].buffer, stdout, list[0].size);
+	
+	CryptAllMessages(list, packetNumbers,globalEncryptionKey);
+//	printf("server string after encryption process: %s", list[0].buffer);
+
+
 	status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list,TRUE);
+	
 	if (SUCCESS != status)
 	{
 		printf_s("Unsuccesfuly send string - server");
 		goto Exit;
 	}
 Exit:
+	return status;
+}
+
+STATUS CryptAllMessages(PACKET *list,int size,char* encryptionKey)
+{
+	int index;
+	STATUS status;
+
+	status = SUCCESS;
+
+	for (index = 0; index < size && (SUCCESS == status);index++)
+	{
+		status = CryptMessage(list[index].buffer, encryptionKey, list[index].size);
+	}
+
 	return status;
 }

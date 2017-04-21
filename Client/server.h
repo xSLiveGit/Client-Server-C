@@ -4,6 +4,8 @@
 #include <Windows.h>
 #include "../Server/status.h"
 #include "../Server/ServerProtocolSide.h"
+#include "../DLLUtil/DllUtil.h"
+
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
 

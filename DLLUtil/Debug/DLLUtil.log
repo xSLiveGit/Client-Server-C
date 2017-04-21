@@ -1,0 +1,13 @@
+﻿  DLLUtil.c
+d:\faculta\an2\cursc\c client server\dllutil\status.h(10): warning C4005: 'ERROR': macro redefinition
+  c:\program files (x86)\windows kits\8.1\include\um\wingdi.h(114): note: see previous definition of 'ERROR'
+d:\faculta\an2\cursc\c client server\dllutil\dllutil.c(9): warning C4273: 'MemoryCopy': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\dllutil.h(11): note: see previous definition of 'MemoryCopy'
+d:\faculta\an2\cursc\c client server\dllutil\dllutil.c(33): warning C4273: 'StringToInt': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\dllutil.h(12): note: see previous definition of 'StringToInt'
+d:\faculta\an2\cursc\c client server\dllutil\dllutil.c(64): warning C4273: 'IntToString': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\dllutil.h(13): note: see previous definition of 'IntToString'
+d:\faculta\an2\cursc\c client server\dllutil\dllutil.c(99): warning C4028: formal parameter 2 different from declaration
+d:\faculta\an2\cursc\c client server\dllutil\dllutil.c(99): warning C4273: 'ExportFirstNCharacters': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\dllutil.h(14): note: see previous definition of 'ExportFirstNCharacters'
+  DLLUtil.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\DLLUtil.dll
