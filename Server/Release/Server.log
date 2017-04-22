@@ -1,11 +1,8 @@
 ﻿  server.c
-  main.c
-  ServerProtocolSide.c
-ServerProtocolSide.c(46): warning C4047: '=': 'char' differs in levels of indirection from 'char [2]'
-ServerProtocolSide.c(192): warning C4101: 'packetSize': unreferenced local variable
-  status.c
   Generating code
-  All 18 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  4 of 18 functions (22.2%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Server.exe
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Server.pdb (Full PDB)

@@ -140,16 +140,19 @@ STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PA
 	int indexPacket;
 	BOOL res;
 	DWORD writedBytes;
+	DWORD readedBytes;
 	// -- initialization ---
 	status = SUCCESS;
 	buffer = (char*)malloc(10 * sizeof(char));
 	indexPacket = 0;
 	res = TRUE;
 	writedBytes = 0;
+	readedBytes = 0;
 
 	//send nr of packets
 	_itoa_s(packetsNumber, buffer, 10, 10);
 
+	// --------------------------- SEND NUMBERS OF PACKETS
 	res = WriteFile(
 		serverProtocol->pipeHandle,			//_In_        HANDLE       hFile,
 		buffer,								//_In_        LPCVOID      lpBuffer,
@@ -157,6 +160,35 @@ STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PA
 		&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 		NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
+	if (!res)
+	{
+		status |= COMUNICATION_ERROR;
+		goto Exit;
+	}
+	res = FlushFileBuffers(serverProtocol->pipeHandle);
+	if (!res)
+	{
+		status = COMUNICATION_ERROR;
+		goto Exit;
+	}
+	// --------------------------- END SEND NUMBERS OF PACKETS
+
+	// --------------------------- RECEIVE OK MESSAGE
+	//res = ReadFile(
+	//	serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
+	//	buffer,							//_Out_       LPVOID       lpBuffer,
+	//	10,								//_In_        DWORD        nNumberOfBytesToRead,
+	//	&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+	//	NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
+	//	);
+	//buffer[2] = '\0';
+	//if(!res || strcmp(buffer,"ok") != 0)
+	//{
+	//	status = COMUNICATION_ERROR;
+	//	goto Exit;
+	//}
+	//// --------------------------- END RECEIVE OK MESSAGE
+
 
 	for (indexPacket = 0; indexPacket < packetsNumber; ++indexPacket)
 	{

@@ -43,7 +43,7 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 	status = 0;
 	res = TRUE;
 	tempFileName = (char*)malloc(4096 * sizeof(char));
-	tempFileName[0] = "\0";
+	tempFileName[0] = '\0';
 	// --- Process ---
 	if (NULL == protocol)
 	{
@@ -62,7 +62,7 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 	(
 		tempFileName,				//_In_     LPCTSTR               lpName,
 		PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
-		PIPE_TYPE_MESSAGE,			//_In_     DWORD                 dwPipeMode,
+		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,			//_In_     DWORD                 dwPipeMode,
 		PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
 		4096,						//_In_     DWORD                 nOutBufferSize,
 		4096,						//_In_     DWORD                 nInBufferSize,
@@ -188,8 +188,8 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	BOOL res;
 	char* buffer;
 	DWORD readedBytes;
+	DWORD writedBytes;
 	int indexPacket;
-	DWORD packetSize;
 	char tempMessage[4096] = "";
 
 	//initialization
@@ -198,6 +198,8 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	indexPacket = 0;
 	buffer = (char*)malloc(5001 * sizeof(char));
 	*packetsNumber = 0;
+	writedBytes = 0;
+	readedBytes = 0;
 
 	//process
 	res = ReadFile(
@@ -207,16 +209,37 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-
 	if (!res)
 	{
-		status |= COMUNICATION_ERROR;
+		status = COMUNICATION_ERROR;
 		goto Exit;
 	}
 
 	//*packetsNumber = sprintf_s(buffer, 10, "%ul");
 	buffer[readedBytes] = '\0';
 	*packetsNumber = atoi(buffer);
+
+//	// ------------------ SEND OK MESSAGGE
+//	strcpy(buffer, "OK");
+//	res = WriteFile(
+//		serverProtocol->pipeHandle,			//_In_        HANDLE       hFile,
+//		buffer,								//_In_        LPCVOID      lpBuffer,
+//		2,									//_In_        DWORD        nNumberOfBytesToWrite,
+//		&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+//		NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
+//		);
+//	if (!res)
+//	{
+//		status = COMUNICATION_ERROR;
+//		goto Exit;
+//	}
+//	res = FlushFileBuffers(serverProtocol->pipeHandle);
+//	if (!res)
+//	{
+//		status = COMUNICATION_ERROR;
+//		goto Exit;
+//	}
+//	// ------------------ END SEND OK MESSAGGE
 
 	for (indexPacket = 0; indexPacket < *packetsNumber - 1; ++indexPacket)
 	{

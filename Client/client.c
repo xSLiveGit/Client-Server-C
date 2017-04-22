@@ -91,9 +91,10 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 		goto Exit;
 	}
 	
-	strcpy(pachet.buffer, buffer);
+	//strcpy(pachet.buffer, buffer);
 	readedCharacters = fread(buffer, 1, 4096, inputFileHandle);
 	memcpy(pachet.buffer, buffer, readedCharacters);
+	pachet.size = readedCharacters;
 	list[0] = pachet;
 	status |= pclient->clientProtocol->SendNetworkMessage(pclient->clientProtocol, 1, list,FALSE);
 	if(SUCCESS != status)
@@ -112,7 +113,7 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 		printf_s("Can't receive.\n");
 		goto Exit;
 	}
-	printf_s("%s", readedList[0].buffer);
+	//printf_s("%s", readedList[0].buffer);
 	// --- Exit/CleanUp ---
 Exit:
 	return status;

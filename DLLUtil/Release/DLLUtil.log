@@ -1,0 +1,19 @@
+﻿  dllmain.c
+  DLLUtil.c
+d:\faculta\an2\cursc\c client server\dllutil\status.h(10): warning C4005: 'ERROR': macro redefinition
+  C:\Program Files (x86)\Windows Kits\8.1\Include\um\wingdi.h(114): note: see previous definition of 'ERROR'
+DLLUtil.c(9): warning C4273: 'MemoryCopy': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\DllUtil.h(11): note: see previous definition of 'MemoryCopy'
+DLLUtil.c(33): warning C4273: 'StringToInt': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\DllUtil.h(12): note: see previous definition of 'StringToInt'
+DLLUtil.c(64): warning C4273: 'IntToString': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\DllUtil.h(13): note: see previous definition of 'IntToString'
+DLLUtil.c(99): warning C4028: formal parameter 2 different from declaration
+DLLUtil.c(99): warning C4273: 'ExportFirstNCharacters': inconsistent dll linkage
+  d:\faculta\an2\cursc\c client server\dllutil\DllUtil.h(14): note: see previous definition of 'ExportFirstNCharacters'
+  stdafx.c
+     Creating library D:\Faculta\an2\CursC\C Client Server\Release\DLLUtil.lib and object D:\Faculta\an2\CursC\C Client Server\Release\DLLUtil.exp
+  Generating code
+  All 5 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  DLLUtil.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\DLLUtil.dll
