@@ -13,7 +13,7 @@ STATUS Run(PSERVER pserver);
 //	---	Private functions declarations: ---
 static char globalEncryptionKey[] = "encryptionKey";
 STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int size);
-STATUS CryptAllMessages(PACKET *list, int size, char* encryptionKey);
+STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey);
 //  ---	End private functions declarations: ---
 
 STATUS CreateServer(PSERVER pserver, char* pipeName)
@@ -118,7 +118,7 @@ STATUS Run(PSERVER pserver)
 	STATUS status;
 	BOOL res;
 	int packetNumbers;
-	PPACKET list;
+	PPACKAGE list;
 
 	status = SUCCESS;
 	res = TRUE;
@@ -138,15 +138,13 @@ STATUS Run(PSERVER pserver)
 		printf_s("Unsuccesfuly read string - server");
 		goto Exit;
 	}
-//	printf("server string before encryption process: %s", list[0].buffer);
-	//ExportFirstNCharacters(list[0].buffer, stdout, list[0].size);
 	
+	printf("Server is trying to encrypt given message.\n");
 	CryptAllMessages(list, packetNumbers,globalEncryptionKey);
-//	printf("server string after encryption process: %s", list[0].buffer);
-
 
 	status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list,TRUE);
-	
+	printf("Server sent encrypted packages");
+
 	if (SUCCESS != status)
 	{
 		printf_s("Unsuccesfuly send string - server");
@@ -156,7 +154,7 @@ Exit:
 	return status;
 }
 
-STATUS CryptAllMessages(PACKET *list,int size,char* encryptionKey)
+STATUS CryptAllMessages(PACKAGE *list,int size,char* encryptionKey)
 {
 	int index;
 	STATUS status;

@@ -7,8 +7,8 @@
 
 STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName);
 STATUS CloseConnexion(PCLIENT_PROTOCOL serverProtocol);
-STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PACKET *packetsList, BOOL tryToDezalloc);
-STATUS ReadNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int* packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc);
+STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PACKAGE *packetsList, BOOL tryToDezalloc);
+STATUS ReadNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int* packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc);
 STATUS Login(PCLIENT_PROTOCOL serverProtocol, char* username, char* password);
 // --------------- Helper Function ----------------
 STATUS ReadFromPipe(PCLIENT_PROTOCOL serverProtocol, char** buffer, char** result)
@@ -131,7 +131,7 @@ STATUS CloseConnexion(PCLIENT_PROTOCOL serverProtocol)
 /*
 * This function try to dezalloc the packets of the packetsList
 */
-STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PACKET *packetsList, BOOL tryToDezalloc)
+STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PACKAGE *packetsList, BOOL tryToDezalloc)
 {
 	// --- declaration ---
 	STATUS status = SUCCESS;
@@ -218,7 +218,7 @@ Exit:
 	return status;
 }
 
-STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, PPACKET *packetsList,BOOL tryToDezalloc)
+STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, PPACKAGE *packetsList,BOOL tryToDezalloc)
 {
 	//declaration
 	STATUS status;
@@ -226,15 +226,22 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 	char* buffer;
 	DWORD readedBytes;
 	int indexPacket;
+	PPACKAGE packageListWrapper;
 //	char tempMessage[4096] = "";
+
+	if(NULL == packetsList)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
 
 	//initialization
 	status = SUCCESS;
 	res = TRUE;
 	indexPacket = 0;
-	buffer = (char*)malloc(5001 * sizeof(char));
+	buffer = (char*)malloc(40967 * sizeof(char));
 	*packetsNumber = 0;
-
+	packageListWrapper = *packetsList;
 	//process
 	res = ReadFile(
 		clientProtocol->pipeHandle,		//_In_        HANDLE       hFile,
@@ -247,13 +254,12 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 	if (!res)
 	{
 		status |= COMUNICATION_ERROR;
-		goto Exit;
+		goto CleanUp;
 	}
 
-//	*packetsNumber = sprintf_s(buffer, 10, "%ul");
 	buffer[readedBytes] = '\0';
 	*packetsNumber = atoi(buffer);
-	*packetsList = (PPACKET)malloc(*packetsNumber * sizeof(PACKET));
+	packageListWrapper = (PPACKAGE)malloc(*packetsNumber * sizeof(PACKAGE));
 	for (indexPacket = 0; indexPacket < *packetsNumber - 1; ++indexPacket)
 	{
 
@@ -265,16 +271,16 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 			NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
 
-		if (!res || readedBytes != 4097)
+		if (!res || readedBytes != 4096)
 		{
 			status |= COMUNICATION_ERROR;
-			goto Exit;
+			goto CleanUp;
 		}
 
 		//construct new message. It will be modified for constructing package processed by multiple threads
-		packetsList[indexPacket]->size = 4096;
+		packageListWrapper[indexPacket].size = 4096;
 		//strcpy_s(packetsList[indexPacket]->buffer, 4096, buffer);
-		memcpy(packetsList[indexPacket]->buffer, buffer, 4096);
+		memcpy(packageListWrapper[indexPacket].buffer, buffer, 4096);
 	}
 
 	res = ReadFile(
@@ -286,12 +292,13 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 		);
 
 	buffer[readedBytes] = '\0';
-	packetsList[indexPacket]->size = readedBytes;
-	//aici
-//	strcpy(packetsList[indexPacket]->buffer, buffer);
-	memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
-Exit:
+	packageListWrapper[indexPacket].size = readedBytes;
+	memcpy(packageListWrapper[indexPacket].buffer, buffer, readedBytes);
+CleanUp:
+	*packetsList = packageListWrapper;
 	free(buffer);
+
+Exit:
 	return status;
 }
 

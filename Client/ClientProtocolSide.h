@@ -21,8 +21,8 @@ typedef struct _PROTOCOL
 	char* pipeName;
 	STATUS(*InitializeConnexion) (struct _PROTOCOL* protocol, char* pipeName);
 	STATUS(*CloseConnexion) (struct _PROTOCOL* protocol);
-	STATUS(*ReadNetworkMessage)(struct _PROTOCOL* serverProtocol, int* packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc);
-	STATUS(*SendNetworkMessage)(struct _PROTOCOL* serverProtocol, int packetsNumber, PACKET *packetsList, BOOL tryToDezalloc);
+	STATUS(*ReadNetworkMessage)(struct _PROTOCOL* serverProtocol, int* packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc);
+	STATUS(*SendNetworkMessage)(struct _PROTOCOL* serverProtocol, int packetsNumber, PACKAGE *packetsList, BOOL tryToDezalloc);
 	STATUS(*Login)(struct _PROTOCOL* serverProtocol, char* username, char* password);
 	HANDLE pipeHandle;
 }CLIENT_PROTOCOL, *PCLIENT_PROTOCOL;

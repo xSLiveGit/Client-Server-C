@@ -8,8 +8,8 @@
 #include <strsafe.h>
 //STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName);
 //STATUS CloseConnexion(PSERVER_PROTOCOL serverProtocol);
-//STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc);
-//STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol,int* packetsNumber, PPACKET *packetsList);
+//STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc);
+//STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol,int* packetsNumber, PPACKAGE *packetsList);
 //STATUS ReadUserInformation (PSERVER_PROTOCOL serverProtocol, char** username, char** password);
 // #pragma comment (lib, "DllUtil.lib")
 
@@ -121,7 +121,7 @@ STATUS CloseConnexion(PSERVER_PROTOCOL server)
 /*
 * This function try to dezalloc the packets of the packetsList
 */
-STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKET *packetsList, BOOL tryToDezalloc)
+STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc)
 {
 	// --- declaration ---
 	STATUS status = SUCCESS;
@@ -130,13 +130,14 @@ STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PP
 	int indexPacket;
 	BOOL res;
 	DWORD writedBytes;
+	PPACKAGE packageListWrapper;
 	// -- initialization ---
 	status = SUCCESS;
 	buffer = (char*)malloc(10 * sizeof(char));
 	indexPacket = 0;
 	res = TRUE;
 	writedBytes = 0;
-
+	packageListWrapper = *packetsList;
 	//send nr of packets
 	_itoa_s(packetsNumber, buffer, 10, 10);
 
@@ -151,11 +152,11 @@ STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PP
 	for (indexPacket = 0; indexPacket < packetsNumber; ++indexPacket)
 	{
 		res = WriteFile(
-			serverProtocol->pipeHandle,			//_In_        HANDLE       hFile,
-			packetsList[indexPacket]->buffer,	//_In_        LPCVOID      lpBuffer,
-			packetsList[indexPacket]->size,		//_In_        DWORD        nNumberOfBytesToWrite,
-			&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
-			NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
+			serverProtocol->pipeHandle,					//_In_        HANDLE       hFile,
+			packageListWrapper[indexPacket].buffer,		//_In_        LPCVOID      lpBuffer,
+			packageListWrapper[indexPacket].size,		//_In_        DWORD        nNumberOfBytesToWrite,
+			&writedBytes,								//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			NULL										//_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
 		if (!res)
 		{
@@ -168,10 +169,8 @@ Exit:
 	free(buffer);
 	if (tryToDezalloc)
 	{
-		for (indexPacket = 0; indexPacket < packetsNumber; ++indexPacket)
-		{
-			free(packetsList[indexPacket]);
-		}
+		free(*packetsList);
+		*packetsList = NULL;
 	}
 	return status;
 }
@@ -181,9 +180,9 @@ Exit:
 /*
 * !!! All elements of packetsList must be dezalocated
 */
-STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, PPACKET *packetsList)
+STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, PPACKAGE *packetsList)
 {
-	//declaration
+	// --------- declaration ---------
 	STATUS status;
 	BOOL res;
 	char* buffer;
@@ -191,8 +190,9 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	DWORD writedBytes;
 	int indexPacket;
 	char tempMessage[4096] = "";
+	PPACKAGE packageListWrapper;
 
-	//initialization
+	// --------- initialization ---------
 	status = SUCCESS;
 	res = TRUE;
 	indexPacket = 0;
@@ -200,8 +200,8 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	*packetsNumber = 0;
 	writedBytes = 0;
 	readedBytes = 0;
-
-	//process
+	packageListWrapper = NULL;
+	// --------- process --------- 
 	res = ReadFile(
 		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
@@ -215,31 +215,9 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		goto Exit;
 	}
 
-	//*packetsNumber = sprintf_s(buffer, 10, "%ul");
 	buffer[readedBytes] = '\0';
 	*packetsNumber = atoi(buffer);
-
-//	// ------------------ SEND OK MESSAGGE
-//	strcpy(buffer, "OK");
-//	res = WriteFile(
-//		serverProtocol->pipeHandle,			//_In_        HANDLE       hFile,
-//		buffer,								//_In_        LPCVOID      lpBuffer,
-//		2,									//_In_        DWORD        nNumberOfBytesToWrite,
-//		&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
-//		NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
-//		);
-//	if (!res)
-//	{
-//		status = COMUNICATION_ERROR;
-//		goto Exit;
-//	}
-//	res = FlushFileBuffers(serverProtocol->pipeHandle);
-//	if (!res)
-//	{
-//		status = COMUNICATION_ERROR;
-//		goto Exit;
-//	}
-//	// ------------------ END SEND OK MESSAGGE
+	packageListWrapper = (PPACKAGE)malloc(*packetsNumber * sizeof(PACKAGE));
 
 	for (indexPacket = 0; indexPacket < *packetsNumber - 1; ++indexPacket)
 	{
@@ -258,10 +236,9 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		}
 
 		//construct new message. It will be modified for constructing package processed by multiple threads
-		packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
-		packetsList[indexPacket]->size = readedBytes;
-//		strcpy_s(packetsList[indexPacket]->buffer, readedBytes, buffer);
-		memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
+		//packetsList[indexPacket] = (PPACKAGE)malloc(sizeof(PACKAGE));
+		packageListWrapper[indexPacket].size = readedBytes;
+		memcpy(packageListWrapper[indexPacket].buffer, buffer, readedBytes);
 	}
 	res = ReadFile(
 		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
@@ -276,18 +253,17 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 		status |= COMUNICATION_ERROR;
 		goto Exit;
 	}
-	//buffer[readedBytes] = '\0';
 	//construct new message. It will be modified for constructing package processed by multiple threads
-	packetsList[indexPacket] = (PPACKET)malloc(sizeof(PACKET));
-	packetsList[indexPacket]->size = readedBytes;
-//	strcpy(packetsList[indexPacket]->buffer, buffer);
-	memcpy(packetsList[indexPacket]->buffer, buffer, readedBytes);
-
+	//packetsList[indexPacket] = (PPACKAGE)malloc(sizeof(PACKAGE));
+	packageListWrapper[indexPacket].size = readedBytes;
+	memcpy(packageListWrapper[indexPacket].buffer, buffer, readedBytes);
+	
+	// ------------- Exit ------------
 Exit:
+	*packetsList = packageListWrapper;
 	free(buffer);
 	return status;
 }
-
 
 
 STATUS ReadUserInformation(PSERVER_PROTOCOL serverProtocol, char** username, char** password)
@@ -313,10 +289,6 @@ Exit:
 	free(buffer);
 	return status;
 }
-
-
-
-
 
 STATUS CreateProtocol(PSERVER_PROTOCOL protocol)
 {
