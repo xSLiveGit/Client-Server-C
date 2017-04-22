@@ -116,7 +116,7 @@ STATUS Run(PCLIENT pclient, char* inputFile, char* outputFile)
 		GENERIC_WRITE,							//	_In_     DWORD                 dwDesiredAccess,
 		0,										//	_In_     DWORD                 dwShareMode,
 		NULL,									//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-		CREATE_NEW,								//	_In_     DWORD                 dwCreationDisposition,
+		OPEN_ALWAYS,							//	_In_     DWORD                 dwCreationDisposition,
 		FILE_ATTRIBUTE_NORMAL,					//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL									//	_In_opt_ HANDLE                hTemplateFile
 		);
@@ -128,12 +128,21 @@ STATUS Run(PCLIENT pclient, char* inputFile, char* outputFile)
 	stringSize = GetFileSize(inputFileHandle, NULL);
 
 	// --- Process --
-	status |= pclient->OpenConnexion(pclient);
+	//status |= pclient->OpenConnexion(pclient);
 	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
-
+	status = pclient->clientProtocol->Login(pclient->clientProtocol, "SergiuA", "ParolaSergiu");
+	if(status != SUCCESS_LOGIN)
+	{
+		goto Exit;
+	}
+	else
+	{
+		printf_s("Successfully login.\n");
+	}
+	
 	ConstructPackage(&packageList, &numberOfPackages,inputFileHandle, stringSize);
 	
 	FlushFileBuffers(
@@ -151,33 +160,33 @@ STATUS Run(PCLIENT pclient, char* inputFile, char* outputFile)
 	}
 	pclient->clientProtocol->ReadNetworkMessage(pclient->clientProtocol, &packetsNumber, &packageList, FALSE);
 
-	for (int i = 0; i < numberOfPackages && (SUCCESS == status); i++)
-	{
-		//fwrite(list[i].buffer, 1, list[i].size, outputFileHandle);
-		res = WriteFile(
-			outputFileHandle,					//	_In_        HANDLE       hFile,
-			packageList[i].buffer,				//	_In_        LPCVOID      lpBuffer,
-			packageList[i].size,				//	_In_        DWORD        nNumberOfBytesToWrite,
-			&writedCharacters,					//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
-			NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
-			);
-		if(!res)
-		{
-			status = FILE_ERROR;
-			goto Exit;
-		}
-		/*if(writedCharacters != list[i].size)
-		{
-		status = FILE_ERROR;
-		}*/
-	}
-	//ExportAllMessages(packageList, packetsNumber, outputFileHandle);
+	//for (int i = 0; i < numberOfPackages && (SUCCESS == status); i++)
+	//{
+	//	//fwrite(list[i].buffer, 1, list[i].size, outputFileHandle);
+	//	res = WriteFile(
+	//		outputFileHandle,					//	_In_        HANDLE       hFile,
+	//		packageList[i].buffer,				//	_In_        LPCVOID      lpBuffer,
+	//		packageList[i].size,				//	_In_        DWORD        nNumberOfBytesToWrite,
+	//		&writedCharacters,					//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+	//		NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
+	//		);
+	//	if(!res)
+	//	{
+	//		status = FILE_ERROR;
+	//		goto Exit;
+	//	}
+	//	/*if(writedCharacters != list[i].size)
+	//	{
+	//	status = FILE_ERROR;
+	//	}*/
+	//}
 	if (SUCCESS != status)
 	{
 		printf_s("Can't receive.\n");
 		goto Exit;
 	}
-	//printf_s("%s", readedList[0].buffer);
+	ExportAllMessages(packageList, packetsNumber, outputFileHandle);
+	free(packageList);
 	// --- Exit/CleanUp ---
 Exit:
 	if (NULL != inputFileHandle)
@@ -211,7 +220,7 @@ STATUS ExportAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHan
 			outputFileHandle,					//	_In_        HANDLE       hFile,
 			list[i].buffer,						//	_In_        LPCVOID      lpBuffer,
 			list[i].size,						//	_In_        DWORD        nNumberOfBytesToWrite,
-			&writedCharacters,			//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			&writedCharacters,					//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 			NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
 

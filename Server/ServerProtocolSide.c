@@ -14,22 +14,62 @@
 // #pragma comment (lib, "DllUtil.lib")
 
 // --------------- Helper Function ----------------
-STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer, char** result)
+/**
+ * 
+ * Parameters:
+ *		_IN_		PSERVER_PROTOCOL		serverProtocol
+ *		_OUT_		char**					buffer - must dezalloc !!! Is not null termination string
+ *		_IN_		DWORD					nNumberOfBytesToRead
+ *		_OUT_		DWORD*					nNumberOfBytesReaded 
+ * 
+ * Returns:
+ *		- SUCCESS					- Successfully readed from pipe
+ *		- NULL_POINTER_ERROR		- 1 or many out params are NULL
+ *		- COMUNICATION_ERROR		- Problems of pipe communication have appear
+ *
+ * Note: 
+ *		- If there occurs any error , the memory for buffer is cleaned and the value from buffer adress will be NULL
+ */		
+
+STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer,DWORD nNumberOfBytesToRead,DWORD *nNumberOfBytesReaded)
 {
 	BOOL res;
-	DWORD readedBytes;
+	STATUS status;
+	char* localBuffer;
+
+	localBuffer = (char*)malloc(nNumberOfBytesToRead *sizeof(char) + sizeof(char));
+	status = SUCCESS;
+	res = TRUE;
+
+	if(NULL == nNumberOfBytesReaded || NULL == buffer)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
 
 	res = ReadFile(
 		serverProtocol->pipeHandle,		//_In_        HANDLE       hFile,
-		buffer,							//_Out_       LPVOID       lpBuffer,
-		10,								//_In_        DWORD        nNumberOfBytesToRead,
-		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+		localBuffer,					//_Out_       LPVOID       lpBuffer,
+		nNumberOfBytesToRead,			//_In_        DWORD        nNumberOfBytesToRead,
+		nNumberOfBytesReaded,			//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-	//	strcpy_s(*result, readedBytes, *buffer);
-	memcpy(*result, *buffer, readedBytes);
-	if (!res) return COMUNICATION_ERROR;
-	return SUCCESS;
+
+	if (!res)
+	{
+		status = COMUNICATION_ERROR;
+	}
+Exit:
+	if(SUCCESS != status)
+	{
+		*buffer = NULL;
+		free(localBuffer);
+	}
+	else
+	{
+		*buffer = localBuffer;
+	}
+	return status;
 }
 
 STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
@@ -130,7 +170,9 @@ STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PP
 	int indexPacket;
 	BOOL res;
 	DWORD writedBytes;
+	DWORD size;
 	PPACKAGE packageListWrapper;
+
 	// -- initialization ---
 	status = SUCCESS;
 	buffer = (char*)malloc(10 * sizeof(char));
@@ -138,13 +180,16 @@ STATUS SendNetworkMessage(PSERVER_PROTOCOL serverProtocol, int packetsNumber, PP
 	res = TRUE;
 	writedBytes = 0;
 	packageListWrapper = *packetsList;
+	size = 0;
 	//send nr of packets
+	
 	_itoa_s(packetsNumber, buffer, 10, 10);
+	size = (DWORD)strlen(buffer);
 
 	res = WriteFile(
 		serverProtocol->pipeHandle,			//_In_        HANDLE       hFile,
 		buffer,								//_In_        LPCVOID      lpBuffer,
-		strlen(buffer),						//_In_        DWORD        nNumberOfBytesToWrite,
+		size,								//_In_        DWORD        nNumberOfBytesToWrite,
 		&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 		NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
@@ -265,31 +310,117 @@ Exit:
 	return status;
 }
 
-
-STATUS ReadUserInformation(PSERVER_PROTOCOL serverProtocol, char** username, char** password)
+/**
+* Features:
+*		- Read username and password from pipe
+*
+* Parameters:
+*		- _IN_		PSERVER_PROTOCOL		serverProtocol
+*		- _OUT_		char*					username - Is null termination string
+*		- _OUT_		char*					password - Is null termination string
+*
+* Returns:
+*		- SUCCESS					- Successfully readed from pipe
+*		- NULL_POINTER_ERROR		- 1 or many out params are NULL
+*		- COMUNICATION_ERROR		- Problems of pipe communication have appear
+*
+* Note:
+*		- If there occurs any error , the memory for buffer is cleaned and the value from buffer adress will be NULL
+*		- username and password will have max 4096 bytes
+*/
+STATUS ReadUserInformation(PSERVER_PROTOCOL serverProtocol, char* username, char* password,DWORD bufferSize)
 {
 	STATUS status;
-	char* buffer;
 	BOOL res;
 	DWORD readedBytes;
+	char* buffer;
 
-	buffer = (char*)malloc(10 * sizeof(char));
 	status = SUCCESS;
 	res = TRUE;
 	readedBytes = 0;
+	buffer = NULL;
 
-	status |= ReadFromPipe(serverProtocol, &buffer, username);
+	if(NULL == username || NULL == password)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	status |= ReadFromPipe(serverProtocol, &buffer, bufferSize, &readedBytes);
 	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
+	memcpy(username, buffer, readedBytes);
+	username[readedBytes] = '\0';
+	free(buffer);	
 
-	status |= ReadFromPipe(serverProtocol, &buffer, password);
+	status |= ReadFromPipe(serverProtocol, &buffer, bufferSize, & readedBytes);
+	if (SUCCESS != status)
+	{
+		goto Exit;
+	}
+	memcpy(password, buffer, readedBytes);
+	password[readedBytes] = '\0';
+	free(buffer);	
+
 Exit:
-	free(buffer);
 	return status;
 }
 
+/**
+ *	Features:
+ *		- Send a simple message through pipe
+ *	Parameters:
+ *		- _IN_		PSERVER_PROTOCOL		serverProtocol
+ *		- _IN_		char*					message - NULL terminated char*
+ *	Returns:
+ *		- SUCCESS
+ *		- NULL_POINTER_ERROR if message is NULL
+ *		- CONNEXION_ERROR if there occurs pipe connexion error
+ */
+STATUS SendSimpleMessage (PSERVER_PROTOCOL serverProtocol, char* message)
+{
+	STATUS status;
+	BOOL res;
+	DWORD readedBytes;
+	DWORD size;
+
+	status = SUCCESS;
+	res = TRUE;
+	readedBytes = 0;
+	size = 0;
+
+	if(NULL == message)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	size = (DWORD)strlen(message);
+	res = WriteFile(
+		serverProtocol->pipeHandle,			//	_In_        HANDLE       hFile,
+		message,							//	_In_        LPCVOID      lpBuffer,
+		size,					//	_In_        DWORD        nNumberOfBytesToWrite,
+		&readedBytes,						//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+		NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
+	);
+
+	if(!res || readedBytes != strlen(message))
+	{
+		status = CONNEXION_ERROR;
+	}
+
+Exit:
+	return status;
+}
+
+/**
+ * Parameters:
+ *		_IN_		PSERVER_PROTOCOL		serverProtocol
+ * Returns:
+ *		SUCCESS
+ *
+ */
 STATUS CreateProtocol(PSERVER_PROTOCOL protocol)
 {
 	// --- Declarations ---
@@ -304,6 +435,7 @@ STATUS CreateProtocol(PSERVER_PROTOCOL protocol)
 	protocol->SendNetworkMessage = &SendNetworkMessage;
 	protocol->ReadNetworkMessage = &ReadNetworkMessage;
 	protocol->ReadUserInformation = &ReadUserInformation;
+	protocol->SendSimpleMessage = &SendSimpleMessage;
 	// --- Exit/CleanUp --
 	return status;
 }

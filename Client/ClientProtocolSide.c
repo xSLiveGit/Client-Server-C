@@ -302,8 +302,89 @@ Exit:
 	return status;
 }
 
-STATUS Login(PCLIENT_PROTOCOL serverProtocol, char* username, char* password)
+/**
+ *
+ *	Parameters:
+ *			-	_IN_	PCLIENT_PROTOCOL	serverProtocol
+ *			-	_IN_	char*				username - null terminated char*
+ *			-	_IN_	char*				password - null terminated char*
+ *  Returned:	
+ *			-	COMUNICATION_ERROR						- if any communication error occurs
+ *			-	SUCCESS_LOGIN							- Success logged in
+ *			-	FAILED_LOGIN_WRONG_CREDENTIALS			- username or password are wrong
+ *			-	FAILED_LOGIN_SERVER_REFUSED_CONNECTION	- server refusez to accept client connexion
+ *
+ */
+STATUS Login(PCLIENT_PROTOCOL clientProtocol, char* username, char* password)
 {
-	//@TODO
-	return SUCCESS;
+	BOOL res;
+	STATUS status;
+	DWORD writedBytes;
+	char buffer[10];
+	DWORD readedBytes;
+	DWORD size;
+
+	res = TRUE;
+	status = SUCCESS;
+	writedBytes = 0;
+	readedBytes = 0;
+	size = (DWORD)strlen(username);
+
+	res = WriteFile(
+			clientProtocol->pipeHandle,			//_In_        HANDLE       hFile,
+			username,							//_In_        LPCVOID      lpBuffer,
+			size,					//_In_        DWORD        nNumberOfBytesToWrite,
+			&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
+			);
+	if (!res || writedBytes != strlen(username))
+	{
+		status = COMUNICATION_ERROR;
+		goto Exit;
+	}
+
+	size = (DWORD)strlen(password);
+	res = WriteFile(
+		clientProtocol->pipeHandle,			//_In_        HANDLE       hFile,
+		password,							//_In_        LPCVOID      lpBuffer,
+		size,								//_In_        DWORD        nNumberOfBytesToWrite,
+		&writedBytes,						//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+		NULL								//_Inout_opt_ LPOVERLAPPED lpOverlapped
+		);
+	if (!res || writedBytes != strlen(password))
+	{
+		status = COMUNICATION_ERROR;
+		goto Exit;
+	}
+
+	res = ReadFile(
+		clientProtocol->pipeHandle,		//_In_        HANDLE       hFile,
+		buffer,							//_Out_       LPVOID       lpBuffer,
+		9,								//_In_        DWORD        nNumberOfBytesToRead,
+		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
+		);
+	buffer[readedBytes] = '\0';
+	if(strcmp(buffer, PERMISED_LOGIN_MESSAGE) == 0)
+	{
+		status = SUCCESS_LOGIN;
+		printf("Succesfully login\n");
+	}
+	else if(strcmp(buffer, REFUSED_BY_WRONG_CREDENTIALS_MESSAGE) == 0)
+	{
+		status = FAILED_LOGIN_WRONG_CREDENTIALS;
+		printf("Loggin failed. Wrong credentials.\n");
+	}
+	else if(strcmp(buffer,REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE) == 0)
+	{
+		status = FAILED_LOGIN_SERVER_REFUSED_CONNECTION;
+		printf("Loggin failed caused by server refusing.\n");
+	}
+	else
+	{
+		status = COMUNICATION_ERROR;
+		printf("Loggin failed caused by comunication error.\n");
+	}
+Exit:
+		return status;
 }

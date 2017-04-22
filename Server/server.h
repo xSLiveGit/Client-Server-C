@@ -10,8 +10,8 @@
 
 
 
-#define ON_LIMITED_WORKERS_FLAG (flagOptions) ( return ((flagOptions) & LIMITED_WORKERS_FLAG) == LIMITED_WORKERS_FLAG) 
-#define ON_REJECT_CLIENT_FLAG (flagOptions) ( return ((flagOptions) & REJECT_CLIENTS_FLAG) == REJECT_CLIENTS_FLAG)
+#define ON_LIMITED_WORKERS_FLAG(flg) ( ((flg) & LIMITED_WORKERS_FLAG) == LIMITED_WORKERS_FLAG) 
+#define ON_REJECT_CLIENT_FLAG(flg) ( ((flg) & REJECT_CLIENTS_FLAG) == REJECT_CLIENTS_FLAG)
 
 
 typedef struct _SERVER

@@ -17,7 +17,9 @@ int main()
 	CLIENT client;
 
 	CreateClient(&client, "nume");
+	client.OpenConnexion(&client);
 	client.Run(&client, "input.txt", "output.txt");
+
 	client.RemoveClient(&client);
 	getchar();
 

@@ -3,9 +3,6 @@
 #include "../Server/status.h"
 #include <Windows.h>
 
-enum REQUESTS_TYPE { LOGIN, SEND_MESSAGE_FOR_ENCRYPTION };
-enum RESPONSE_TYPE { LOGIN_RESPONSE, RECEIVE_MESSAGE_FOR_ENCRYPTION_OK, RECEIVE_MESSAGE_FOR_ENCRYPTION_FAILED };
-
 typedef struct
 {
 	char username[20];
@@ -25,7 +22,8 @@ typedef struct _PROTOCOL
 	STATUS(*CloseConnexion) (struct _PROTOCOL* protocol);
 	STATUS(*ReadNetworkMessage)(struct _PROTOCOL* serverProtocol, int* packetsNumber, PPACKAGE *packetsList);
 	STATUS(*SendNetworkMessage)(struct _PROTOCOL* serverProtocol, int packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc);
-	STATUS(*ReadUserInformation)(struct _PROTOCOL* serverProtocol, char** username, char** password);
+	STATUS(*ReadUserInformation)(struct _PROTOCOL* serverProtocol, char* username, char* password, DWORD bufferSize);
+	STATUS(*SendSimpleMessage)(struct _PROTOCOL* serverProtocol, char* message);
 	HANDLE pipeHandle;
 }SERVER_PROTOCOL, *PSERVER_PROTOCOL;
 
