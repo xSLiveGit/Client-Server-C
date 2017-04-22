@@ -2,6 +2,7 @@
 #define _CRTDBG_MAP_ALLOC  
 #include <stdlib.h>  
 #include <crtdbg.h>
+#include <stdio.h>
 
 #ifdef _DEBUG
 #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
@@ -15,7 +16,7 @@ int main()
 {
 	SERVER server;
 
-	CreateServer(&server,"nume\0");
+	CreateServer(&server, "nume\0");
 	//server.OpenConnexion(&server);
 	server.Run(&server);
 	server.RemoveServer(&server);

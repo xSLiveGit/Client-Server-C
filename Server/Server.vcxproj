@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{84CC838D-6DCB-42CC-9C44-FCA8E5E55CE2}</ProjectGuid>
+    <ProjectGuid>{5C112A4E-2CEE-4449-8221-B064884482F3}</ProjectGuid>
     <RootNamespace>Server</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -71,7 +71,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
@@ -110,13 +110,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Client\server.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="server.c" />
     <ClCompile Include="ServerProtocolSide.c" />
     <ClCompile Include="status.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Client\server.h" />
+    <ClInclude Include="server.h" />
     <ClInclude Include="ServerProtocolSide.h" />
     <ClInclude Include="status.h" />
   </ItemGroup>

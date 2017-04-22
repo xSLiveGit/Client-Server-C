@@ -1,9 +1,0 @@
-﻿  server.c
-  main.c
-  ServerProtocolSide.c
-  status.c
-  Generating code
-  All 20 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Server.exe
-  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Release\Server.pdb (Full PDB)

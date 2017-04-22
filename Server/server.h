@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include "../Server/status.h"
 #include "../Server/ServerProtocolSide.h"
+
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
 
@@ -15,15 +16,15 @@
 
 typedef struct _SERVER
 {
-	STATUS (*RemoveServer)(struct _SERVER* pserver);
-	STATUS (*OpenConnexion)(struct _SERVER* pserver);
-	STATUS (*SetStopFlag)(struct _SERVER* pserver);
-	STATUS (*Run)(struct _SERVER* pserver);
+	STATUS(*RemoveServer)(struct _SERVER* pserver);
+	STATUS(*OpenConnexion)(struct _SERVER* pserver);
+	STATUS(*SetStopFlag)(struct _SERVER* pserver);
+	STATUS(*Run)(struct _SERVER* pserver);
 	PSERVER_PROTOCOL serverProtocol;
 	char* pipeName;
 	DWORD flagOptions;
 	DWORD referenceCounter;
-}SERVER,*PSERVER;
+}SERVER, *PSERVER;
 
 STATUS CreateServer(PSERVER pserver, char* pipeName);
 

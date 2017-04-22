@@ -2,7 +2,7 @@
 #include <stdlib.h>  
 #include <crtdbg.h>  
 #include "client.h"
-
+#include <stdio.h>
 
 #ifdef _DEBUG
 #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
@@ -15,9 +15,9 @@
 int main()
 {
 	CLIENT client;
-	
+
 	CreateClient(&client, "nume");
-	client.Run(&client,"input.txt","output.txt");
+	client.Run(&client, "input.txt", "output.txt");
 	client.RemoveClient(&client);
 	getchar();
 

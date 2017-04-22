@@ -2,7 +2,6 @@
 #define _CLIENT_PROTOCOL_SIDE_H_
 #include <Windows.h>
 #include "status.h"
-#include "../DLLUtil/DllUtil.h"
 
 typedef struct
 {

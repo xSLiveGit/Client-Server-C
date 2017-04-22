@@ -26,7 +26,7 @@ STATUS ReadFromPipe(PSERVER_PROTOCOL serverProtocol, char** buffer, char** resul
 		&readedBytes,					//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-//	strcpy_s(*result, readedBytes, *buffer);
+	//	strcpy_s(*result, readedBytes, *buffer);
 	memcpy(*result, *buffer, readedBytes);
 	if (!res) return COMUNICATION_ERROR;
 	return SUCCESS;
@@ -53,22 +53,22 @@ STATUS InitializeConnexion(PSERVER_PROTOCOL protocol, char* fileName)
 
 	protocol->pipeName = fileName;
 	//StringCchCopyA(tempFileName, strlen(PREFIX_NAMED_PIPE), PREFIX_NAMED_PIPE);
-	strcpy_s(tempFileName,13, PREFIX_NAMED_PIPE);
+	strcpy_s(tempFileName, 13, PREFIX_NAMED_PIPE);
 	// ReSharper disable CppDeprecatedEntity
 	strcat(tempFileName, fileName);
 	// ReSharper restore CppDeprecatedEntity
 	//StringCchCatA(tempFileName, strlen(fileName), fileName);
 	protocol->pipeHandle = CreateNamedPipeA
-	(
-		tempFileName,				//_In_     LPCTSTR               lpName,
-		PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
-		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,			//_In_     DWORD                 dwPipeMode,
-		PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
-		4096,						//_In_     DWORD                 nOutBufferSize,
-		4096,						//_In_     DWORD                 nInBufferSize,
-		0,							//_In_     DWORD                 nDefaultTimeOut,
-		NULL						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
-	);
+		(
+			tempFileName,				//_In_     LPCTSTR               lpName,
+			PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,			//_In_     DWORD                 dwPipeMode,
+			PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
+			4096,						//_In_     DWORD                 nOutBufferSize,
+			4096,						//_In_     DWORD                 nInBufferSize,
+			0,							//_In_     DWORD                 nDefaultTimeOut,
+			NULL						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
+			);
 
 	res = ConnectNamedPipe
 		(
@@ -257,7 +257,7 @@ STATUS ReadNetworkMessage(PSERVER_PROTOCOL serverProtocol, int* packetsNumber, P
 	//packetsList[indexPacket] = (PPACKAGE)malloc(sizeof(PACKAGE));
 	packageListWrapper[indexPacket].size = readedBytes;
 	memcpy(packageListWrapper[indexPacket].buffer, buffer, readedBytes);
-	
+
 	// ------------- Exit ------------
 Exit:
 	*packetsList = packageListWrapper;

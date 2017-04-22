@@ -10,8 +10,8 @@
 
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
-STATUS Run(PCLIENT pclient,char*,char*);
-STATUS PrintAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle);
+STATUS Run(PCLIENT pclient, char*, char*);
+STATUS ExportAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle);
 STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE openedInputFileHandle, DWORD totalBytesSize);
 
 STATUS CreateClient(PCLIENT pclient, char* pipeName)
@@ -22,7 +22,7 @@ STATUS CreateClient(PCLIENT pclient, char* pipeName)
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-	if(NULL == pipeName)
+	if (NULL == pipeName)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
@@ -64,18 +64,21 @@ STATUS RemoveClient(PCLIENT pclient)
 	return status;
 }
 
-STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
+STATUS Run(PCLIENT pclient, char* inputFile, char* outputFile)
 {
 	// --- Declarations ---
 	STATUS status;
 	int packetsNumber;
-	PPACKAGE packageList ;
+	PPACKAGE packageList;
 	char buffer[4096];
 	size_t readedCharacters;
 	HANDLE inputFileHandle;
 	HANDLE outputFileHandle;
 	DWORD stringSize;
 	DWORD numberOfPackages;
+	DWORD writedCharacters;
+	BOOL res;
+	DWORD readedCharachters;
 	// --- End declarations ---
 
 	// --- Initializations ---
@@ -88,10 +91,13 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 	numberOfPackages = 0;
 	inputFileHandle = NULL;
 	outputFileHandle = NULL;
+	writedCharacters = 0;
+	res = TRUE;
+	readedCharachters = 0;
 	// --- End initializations ---
 
 	//Open file for processing them 
-	inputFileHandle = CreateFile(
+	inputFileHandle = CreateFileA(
 		inputFile,				//	_In_     LPCTSTR               lpFileName,
 		GENERIC_READ,			//	_In_     DWORD                 dwDesiredAccess,
 		FILE_SHARE_READ,		//	_In_     DWORD                 dwShareMode,
@@ -100,17 +106,17 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 		FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL					//_In_opt_ HANDLE                hTemplateFile
 		);
-	if(NULL == inputFileHandle)
+	if (NULL == inputFileHandle)
 	{
 		status = FILE_ERROR;
 		goto Exit;
 	}
-	outputFileHandle = CreateFile(
-		inputFile,								//	_In_     LPCTSTR               lpFileName,
+	outputFileHandle = CreateFileA(
+		outputFile,								//	_In_     LPCTSTR               lpFileName,
 		GENERIC_WRITE,							//	_In_     DWORD                 dwDesiredAccess,
-		ERROR_FILE_SHARE_RESOURCE_CONFLICT,		//	_In_     DWORD                 dwShareMode,
+		0,										//	_In_     DWORD                 dwShareMode,
 		NULL,									//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-		CREATE_ALWAYS,							//	_In_     DWORD                 dwCreationDisposition,
+		CREATE_NEW,								//	_In_     DWORD                 dwCreationDisposition,
 		FILE_ATTRIBUTE_NORMAL,					//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL									//	_In_opt_ HANDLE                hTemplateFile
 		);
@@ -123,26 +129,49 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 
 	// --- Process --
 	status |= pclient->OpenConnexion(pclient);
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
-	
-	ConstructPackage(&packageList, &numberOfPackages,inputFileHandle, stringSize);
 
-	status |= pclient->clientProtocol->SendNetworkMessage(pclient->clientProtocol, numberOfPackages, packageList,FALSE);
-	//@TODO must dezalloc because ReadNetworkMessage construct other packageList
-	if(SUCCESS != status)
+	ConstructPackage(&packageList, &numberOfPackages,inputFileHandle, stringSize);
+	
+	FlushFileBuffers(
+		outputFileHandle					//	_In_ HANDLE hFile
+		);
+
+	status |= pclient->clientProtocol->SendNetworkMessage(pclient->clientProtocol, numberOfPackages, packageList, FALSE);
+	free(packageList);
+	packageList = NULL;
+
+	if (SUCCESS != status)
 	{
 		printf_s("Can't sent.\n");
 		goto Exit;
 	}
-//	printf("client string before encryption process: %s", list[0].buffer);
 	pclient->clientProtocol->ReadNetworkMessage(pclient->clientProtocol, &packetsNumber, &packageList, FALSE);
-//	printf("client string after encryption process: %s", list[0].buffer);
 
-	PrintAllMessages(packageList, packetsNumber, outputFileHandle);
-
+	for (int i = 0; i < numberOfPackages && (SUCCESS == status); i++)
+	{
+		//fwrite(list[i].buffer, 1, list[i].size, outputFileHandle);
+		res = WriteFile(
+			outputFileHandle,					//	_In_        HANDLE       hFile,
+			packageList[i].buffer,				//	_In_        LPCVOID      lpBuffer,
+			packageList[i].size,				//	_In_        DWORD        nNumberOfBytesToWrite,
+			&writedCharacters,					//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
+			);
+		if(!res)
+		{
+			status = FILE_ERROR;
+			goto Exit;
+		}
+		/*if(writedCharacters != list[i].size)
+		{
+		status = FILE_ERROR;
+		}*/
+	}
+	//ExportAllMessages(packageList, packetsNumber, outputFileHandle);
 	if (SUCCESS != status)
 	{
 		printf_s("Can't receive.\n");
@@ -151,7 +180,7 @@ STATUS Run(PCLIENT pclient,char* inputFile,char* outputFile)
 	//printf_s("%s", readedList[0].buffer);
 	// --- Exit/CleanUp ---
 Exit:
-	if(NULL != inputFileHandle)
+	if (NULL != inputFileHandle)
 	{
 		CloseHandle(inputFileHandle);
 		inputFileHandle = NULL;
@@ -164,11 +193,11 @@ Exit:
 	return status;
 }
 
-STATUS PrintAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle)
+STATUS ExportAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle)
 {
 	STATUS status;
 	unsigned int i;
-	int writedCharacters;
+	DWORD writedCharacters;
 	BOOL res;
 
 	res = TRUE;
@@ -182,30 +211,30 @@ STATUS PrintAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHand
 			outputFileHandle,					//	_In_        HANDLE       hFile,
 			list[i].buffer,						//	_In_        LPCVOID      lpBuffer,
 			list[i].size,						//	_In_        DWORD        nNumberOfBytesToWrite,
-			(DWORD*)&writedCharacters,			//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			&writedCharacters,			//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 			NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
-		);
-		
+			);
+
 		/*if(writedCharacters != list[i].size)
 		{
-			status = FILE_ERROR;
+		status = FILE_ERROR;
 		}*/
 	}
 	FlushFileBuffers(
 		outputFileHandle					//	_In_ HANDLE hFile
-	);
+		);
 	return status;
 }
 
-/** 
- * This function alloc memory for packageList
- * 
- *
- *
- */
-STATUS ConstructPackage(PPACKAGE *packageList,DWORD *packageListSize,HANDLE openedInputFileHandle,DWORD totalBytesSize)
+/**
+* This function alloc memory for packageList
+*
+*
+*
+*/
+STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE openedInputFileHandle, DWORD totalBytesSize)
 {
-	STATUS status ;
+	STATUS status;
 	DWORD totalPackagesNumber;
 	unsigned int iPackage;
 	DWORD readedBytesNumber;
@@ -219,13 +248,13 @@ STATUS ConstructPackage(PPACKAGE *packageList,DWORD *packageListSize,HANDLE open
 
 	status = SUCCESS;
 	totalPackagesNumber = totalBytesSize / 4096;
-	if(totalBytesSize % 4096 > 0)
+	if (totalBytesSize % 4096 > 0)
 	{
 		totalPackagesNumber++;
 	}
 	packageListWrapper = (PACKAGE*)malloc(totalPackagesNumber * sizeof(PACKAGE));
 
-	for (iPackage = 0; iPackage < totalPackagesNumber && (SUCCESS == status);iPackage++)
+	for (iPackage = 0; iPackage < totalPackagesNumber && (SUCCESS == status); iPackage++)
 	{
 		//readedBytesNumber = fread(packageListWrapper[iPackage].buffer, sizeof(char), PACKAGE_SIZE, openedInputFileHandle);
 		ReadFile(
@@ -236,7 +265,7 @@ STATUS ConstructPackage(PPACKAGE *packageList,DWORD *packageListSize,HANDLE open
 			NULL										//	_Inout_opt_ LPOVERLAPPED lpOverlapped
 			);
 		packageListWrapper[iPackage].size = readedBytesNumber;
-		if(readedBytesNumber != PACKAGE_SIZE && iPackage != (totalPackagesNumber-1))
+		if (readedBytesNumber != PACKAGE_SIZE && iPackage != (totalPackagesNumber - 1))
 		{
 			status = FILE_ERROR;
 		}

@@ -1,3 +1,7 @@
-﻿  server.c
-  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Server.exe
-  Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Server.pdb (Partial PDB)
+﻿  status.c
+  ServerProtocolSide.c
+  server.c
+  main.c
+  Generating Code...
+  Server.vcxproj -> D:\Encryptor Client Server\Debug\Server.exe
+  Server.vcxproj -> D:\Encryptor Client Server\Debug\Server.pdb (Partial PDB)

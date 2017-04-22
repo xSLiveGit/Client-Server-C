@@ -94,13 +94,13 @@ STATUS InitializeConnexion(PCLIENT_PROTOCOL protocol, char* fileName)
 		NULL);						// don't set maximum time
 
 
-	/*if (!res)
-	{
-		status = CONNEXION_ERROR;
-		goto EXIT;
-	}*/
+									/*if (!res)
+									{
+									status = CONNEXION_ERROR;
+									goto EXIT;
+									}*/
 
-	// --- Exit/CleanUp --
+									// --- Exit/CleanUp --
 EXIT:
 	free(tempFileName);
 	return status;
@@ -118,7 +118,7 @@ STATUS CloseConnexion(PCLIENT_PROTOCOL serverProtocol)
 
 	// --- Process ---
 	res = CloseHandle(serverProtocol->pipeHandle);
-	if(!res)
+	if (!res)
 	{
 		status |= FILE_ERROR;
 	}
@@ -208,17 +208,17 @@ STATUS SendNetworkMessage(PCLIENT_PROTOCOL serverProtocol, int packetsNumber, PA
 
 Exit:
 	free(buffer);
-//	if (tryToDezalloc)
-//	{
-//		for (indexPacket = 0; indexPacket < packetsNumber; ++indexPacket)
-//		{
-//			free(packetsList[indexPacket]);
-//		}
-//	}
+	//	if (tryToDezalloc)
+	//	{
+	//		for (indexPacket = 0; indexPacket < packetsNumber; ++indexPacket)
+	//		{
+	//			free(packetsList[indexPacket]);
+	//		}
+	//	}
 	return status;
 }
 
-STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, PPACKAGE *packetsList,BOOL tryToDezalloc)
+STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, PPACKAGE *packetsList, BOOL tryToDezalloc)
 {
 	//declaration
 	STATUS status;
@@ -227,9 +227,9 @@ STATUS ReadNetworkMessage(PCLIENT_PROTOCOL clientProtocol, int* packetsNumber, P
 	DWORD readedBytes;
 	int indexPacket;
 	PPACKAGE packageListWrapper;
-//	char tempMessage[4096] = "";
+	//	char tempMessage[4096] = "";
 
-	if(NULL == packetsList)
+	if (NULL == packetsList)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;

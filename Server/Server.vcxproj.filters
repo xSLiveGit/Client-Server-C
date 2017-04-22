@@ -18,24 +18,24 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Client\server.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="status.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ServerProtocolSide.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="server.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Client\server.h">
+    <ClInclude Include="status.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ServerProtocolSide.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="status.h">
+    <ClInclude Include="server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

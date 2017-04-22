@@ -18,30 +18,25 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="status.c">
+    <ClCompile Include="client.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ClientProtocolSide.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="client.c">
+    <ClCompile Include="status.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="client.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="status.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ClientProtocolSide.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="client.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="input.txt">
-      <Filter>Resource Files</Filter>
-    </Text>
   </ItemGroup>
 </Project>

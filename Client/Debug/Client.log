@@ -1,3 +1,4 @@
 ﻿  client.c
-  Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Client.exe
-  Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\Debug\Client.pdb (Partial PDB)
+d:\encryptor client server\client\client.c(154): warning C4018: '<': signed/unsigned mismatch
+  Client.vcxproj -> D:\Encryptor Client Server\Debug\Client.exe
+  Client.vcxproj -> D:\Encryptor Client Server\Debug\Client.pdb (Partial PDB)
