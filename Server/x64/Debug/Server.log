@@ -1,5 +1,12 @@
-﻿  server.c
-d:\faculta\an2\cursc\c client server\server\server.c(56): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-d:\faculta\an2\cursc\c client server\server\server.c(244): warning C4018: '<': signed/unsigned mismatch
+﻿  status.c
+  ServerProtocolSide.c
+  server.c
+d:\faculta\an2\cursc\c client server\server\server.c(63): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+d:\faculta\an2\cursc\c client server\server\server.c(139): warning C4102: 'Start': unreferenced label
+d:\faculta\an2\cursc\c client server\server\server.c(132): warning C4101: 'username': unreferenced local variable
+d:\faculta\an2\cursc\c client server\server\server.c(133): warning C4101: 'password': unreferenced local variable
+d:\faculta\an2\cursc\c client server\server\server.c(222): warning C4018: '<': signed/unsigned mismatch
+  main.c
+  Generating Code...
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Server.exe
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Server.pdb (Partial PDB)

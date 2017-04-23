@@ -12,13 +12,13 @@
 #define DBG_NEW new
 #endif
 
-int main()
+int main(int argc,char** argv)
 {
 	CLIENT client;
 
 	CreateClient(&client, "nume");
 	client.OpenConnexion(&client);
-	client.Run(&client, "input.txt", "output.txt");
+	client.Run(&client, argv[1], argv[2]);
 
 	client.RemoveClient(&client);
 	getchar();

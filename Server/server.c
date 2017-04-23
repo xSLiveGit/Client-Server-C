@@ -12,11 +12,18 @@ STATUS IsValidUser(char* username, char* password);
 
 char* users[][2] = { {"Raul","ParolaRaul"} , {"Sergiu","ParolaSergiu"} };
 DWORD nUsers = 2;
+#define BUFSIZE 4096
+
+typedef struct {
+	PSERVER pserver;
+	HANDLE pipe;
+} PARAMS_LOAD;
 
 //	---	Private functions declarations: ---
 static char globalEncryptionKey[] = "encryptionKey";
 STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int size);
 STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey);
+DWORD WINAPI InstanceThread(LPVOID lpvParam);
 //  ---	End private functions declarations: ---
 
 STATUS CreateServer(PSERVER pserver, char* pipeName)
@@ -124,7 +131,9 @@ STATUS Run(PSERVER pserver)
 	PPACKAGE list;
 	char  username[4096];
 	char  password[4096];
-
+	PARAMS_LOAD params;
+	HANDLE hThread;
+	DWORD dwThreadId;
 	while(TRUE)
 	{
 		Start:
@@ -133,6 +142,8 @@ STATUS Run(PSERVER pserver)
 		res = TRUE;
 		packetNumbers = 0;
 		list = NULL;
+		hThread = NULL;
+		dwThreadId = 0;
 		status |= pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
 		if (SUCCESS != status)
 		{
@@ -142,57 +153,24 @@ STATUS Run(PSERVER pserver)
 		else
 		{
 			printf_s("Successfully initialize conexion - server\n");
-		}
+			params.pserver = pserver;
+			params.pipe = pserver->serverProtocol->pipeHandle;
+			hThread = CreateThread(
+				NULL,              // no security attribute 
+				0,                 // default stack size 
+				InstanceThread,    // thread proc
+				(LPVOID)(&params),    // thread parameter 
+				0,                 // not suspended 
+				&dwThreadId);      // returns thread ID 
 
-		status = pserver->serverProtocol->ReadUserInformation(pserver->serverProtocol, username, password, 30);
-		if (SUCCESS != status)
-		{
-			printf("Unsuccessfully login.");
-			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
-			goto Start;
-		}
-		else if ((ON_REJECT_CLIENT_FLAG((pserver->flagOptions))))
-		{
-			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
-			goto Start;
-		}
-		status = IsValidUser(username, password);
-		if (VALID_USER != status)
-		{
-			if (WRONG_CREDENTIALS == status)
+			if (hThread == NULL)
 			{
-				pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_WRONG_CREDENTIALS_MESSAGE);
+				printf_s("CreateThread failed, GLE=%d.\n", GetLastError());
+				return -1;
 			}
-			else
-			{
-				pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
-			}
-			goto Start;
+			//else CloseHandle(hThread);
 		}
-		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, PERMISED_LOGIN_MESSAGE);
-
-		status = pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
-		if (SUCCESS != status)
-		{
-			printf_s("Unsuccessfully read string - server\n");
-			goto Exit;
-		}
-		else
-		{
-			printf_s("Successfully read string - server\n");
-		}
-
-		printf("Server is trying to encrypt given message.\n");
-		CryptAllMessages(list, packetNumbers, globalEncryptionKey);
-
-		status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list, TRUE);
-		printf("Server sent encrypted packages");
-
-		if (SUCCESS != status)
-		{
-			printf_s("Unsuccessfully send string - server");
-			goto Exit;
-		}
+		
 	}
 Exit:
 	return status;
@@ -254,3 +232,138 @@ STATUS IsValidUser(char* username,char* password)
 Exit:
 	return status;
 }
+
+DWORD WINAPI InstanceThread(LPVOID lpvParam)
+// This routine is a thread processing function to read from and reply to a client
+// via the open pipe connection passed from the main loop. Note this allows
+// the main loop to continue executing, potentially creating more threads of
+// of this procedure to run concurrently, depending on the number of incoming
+// client connections.
+{
+	HANDLE hHeap = GetProcessHeap();
+	TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, BUFSIZE*sizeof(TCHAR));
+	TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, BUFSIZE*sizeof(TCHAR));
+	STATUS status;
+	BOOL res;
+	int packetNumbers;
+	PPACKAGE list;
+	char  username[4096];
+	char  password[4096];
+	PSERVER pserver;
+	PARAMS_LOAD params;
+
+	DWORD cbBytesRead = 0, cbReplyBytes = 0, cbWritten = 0;
+	BOOL fSuccess = FALSE;
+	HANDLE hPipe = NULL;
+	status = SUCCESS;
+	res = TRUE;
+	packetNumbers = 0;
+	list = NULL;
+	pserver = NULL;
+	// Do some extra error checking since the app will keep running even if this
+	// thread fails.
+
+	if (lpvParam == NULL)
+	{
+		printf("\nERROR - Pipe Server Failure:\n");
+		printf("   InstanceThread got an unexpected NULL value in lpvParam.\n");
+		printf("   InstanceThread exitting.\n");
+		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
+		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
+		return (DWORD)-1;
+	}
+
+	if (pchRequest == NULL)
+	{
+		printf("\nERROR - Pipe Server Failure:\n");
+		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
+		printf("   InstanceThread exitting.\n");
+		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
+		return (DWORD)-1;
+	}
+
+	if (pchReply == NULL)
+	{
+		printf("\nERROR - Pipe Server Failure:\n");
+		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
+		printf("   InstanceThread exitting.\n");
+		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
+		return (DWORD)-1;
+	}
+
+	// Print verbose messages. In production code, this should be for debugging only.
+	printf("InstanceThread created, receiving and processing messages.\n");
+
+	// The thread's parameter is a handle to a pipe object instance. 
+	params = *((PARAMS_LOAD*)lpvParam);
+	pserver = params.pserver;
+	pserver->serverProtocol->pipeHandle = params.pipe;
+	
+	//	--------------------------------------------------			START		--------------------------------------------------
+	// Loop until done reading
+	status = pserver->serverProtocol->ReadUserInformation(pserver->serverProtocol, username, password, 30);
+	if (SUCCESS != status)
+	{
+		printf("Unsuccessfully login.");
+		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+		goto Exit;
+	}
+	else if ((ON_REJECT_CLIENT_FLAG((pserver->flagOptions))))
+	{
+		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+		goto Exit;
+	}
+	status = IsValidUser(username, password);
+	if (VALID_USER != status)
+	{
+		if (WRONG_CREDENTIALS == status)
+		{
+			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_WRONG_CREDENTIALS_MESSAGE);
+		}
+		else
+		{
+			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+		}
+		goto Exit;
+	}
+	pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, PERMISED_LOGIN_MESSAGE);
+
+	status = pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
+	if (SUCCESS != status)
+	{
+		printf_s("Unsuccessfully read string - server\n");
+		goto Exit;
+	}
+	else
+	{
+		printf_s("Successfully read string - server\n");
+	}
+
+	printf("Server is trying to encrypt given message.\n");
+	CryptAllMessages(list, packetNumbers, globalEncryptionKey);
+
+	status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list, TRUE);
+	printf("Server sent encrypted packages");
+
+	if (SUCCESS != status)
+	{
+		printf_s("Unsuccessfully send string - server");
+		goto Exit;
+	}
+	//	--------------------------------------------------		END		--------------------------------------------------
+	// Flush the pipe to allow the client to read the pipe's contents 
+	// before disconnecting. Then disconnect the pipe, and close the 
+	// handle to this pipe instance. 
+Exit:
+	FlushFileBuffers(hPipe);
+	DisconnectNamedPipe(hPipe);
+	CloseHandle(hPipe);
+
+	HeapFree(hHeap, 0, pchRequest);
+	HeapFree(hHeap, 0, pchReply);
+
+	printf("InstanceThread exitting.\n");
+	ExitThread(1);
+	return 1;
+}
+
