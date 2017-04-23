@@ -1,5 +1,5 @@
 ﻿  server.c
 d:\faculta\an2\cursc\c client server\server\server.c(56): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
-d:\faculta\an2\cursc\c client server\server\server.c(242): warning C4018: '<': signed/unsigned mismatch
+d:\faculta\an2\cursc\c client server\server\server.c(244): warning C4018: '<': signed/unsigned mismatch
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Server.exe
   Server.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Server.pdb (Partial PDB)

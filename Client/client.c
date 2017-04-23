@@ -133,7 +133,7 @@ STATUS Run(PCLIENT pclient, char* inputFile, char* outputFile)
 	{
 		goto Exit;
 	}
-	status = pclient->clientProtocol->Login(pclient->clientProtocol, "SergiuA", "ParolaSergiu");
+	status = pclient->clientProtocol->Login(pclient->clientProtocol, "Sergiu", "ParolaSergiu");
 	if(status != SUCCESS_LOGIN)
 	{
 		goto Exit;

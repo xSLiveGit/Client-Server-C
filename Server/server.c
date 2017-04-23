@@ -125,73 +125,75 @@ STATUS Run(PSERVER pserver)
 	char  username[4096];
 	char  password[4096];
 
-	status = SUCCESS;
-	res = TRUE;
-	packetNumbers = 0;
-	list = NULL;
-
-
-	status |= pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
-	if (SUCCESS != status)
+	while(TRUE)
 	{
-		printf_s("Unsuccessfully initialize conexion - server\n");
-		goto Exit;
-	}
-	else
-	{
-		printf_s("Successfully initialize conexion - server\n");
-	}
-
-	status = pserver->serverProtocol->ReadUserInformation(pserver->serverProtocol, username, password,30); 
-	if(SUCCESS != status)
-	{
-		printf("Unsuccessfully login.");
-		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
-		goto Exit;
-	}
-	else if((ON_REJECT_CLIENT_FLAG((pserver->flagOptions))))
-	{
-		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
-		goto Exit;
-	}
-	status = IsValidUser(username, password);
-	if(VALID_USER != status)
-	{
-		if(WRONG_CREDENTIALS == status)
+		Start:
+		printf_s("Server start new sesion\n");
+		status = SUCCESS;
+		res = TRUE;
+		packetNumbers = 0;
+		list = NULL;
+		status |= pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
+		if (SUCCESS != status)
 		{
-			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_WRONG_CREDENTIALS_MESSAGE);
+			printf_s("Unsuccessfully initialize conexion - server\n");
+			goto Exit;
 		}
 		else
 		{
-			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+			printf_s("Successfully initialize conexion - server\n");
 		}
-		goto Exit;
-	}
-	pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, PERMISED_LOGIN_MESSAGE);
 
-	status = pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
-	if (SUCCESS != status)
-	{
-		printf_s("Unsuccessfully read string - server\n");
-		goto Exit;
-	}
-	else
-	{
-		printf_s("Successfully read string - server\n");
-	}
+		status = pserver->serverProtocol->ReadUserInformation(pserver->serverProtocol, username, password, 30);
+		if (SUCCESS != status)
+		{
+			printf("Unsuccessfully login.");
+			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+			goto Start;
+		}
+		else if ((ON_REJECT_CLIENT_FLAG((pserver->flagOptions))))
+		{
+			pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+			goto Start;
+		}
+		status = IsValidUser(username, password);
+		if (VALID_USER != status)
+		{
+			if (WRONG_CREDENTIALS == status)
+			{
+				pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_WRONG_CREDENTIALS_MESSAGE);
+			}
+			else
+			{
+				pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, REFUSED_BY_SERVER_REFUSED_CONNECTION_MESSAGE);
+			}
+			goto Start;
+		}
+		pserver->serverProtocol->SendSimpleMessage(pserver->serverProtocol, PERMISED_LOGIN_MESSAGE);
 
-	printf("Server is trying to encrypt given message.\n");
-	CryptAllMessages(list, packetNumbers, globalEncryptionKey);
+		status = pserver->serverProtocol->ReadNetworkMessage(pserver->serverProtocol, &packetNumbers, &list);
+		if (SUCCESS != status)
+		{
+			printf_s("Unsuccessfully read string - server\n");
+			goto Exit;
+		}
+		else
+		{
+			printf_s("Successfully read string - server\n");
+		}
 
-	status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list, TRUE);
-	printf("Server sent encrypted packages");
+		printf("Server is trying to encrypt given message.\n");
+		CryptAllMessages(list, packetNumbers, globalEncryptionKey);
 
-	if (SUCCESS != status)
-	{
-		printf_s("Unsuccessfully send string - server");
-		goto Exit;
+		status = pserver->serverProtocol->SendNetworkMessage(pserver->serverProtocol, packetNumbers, &list, TRUE);
+		printf("Server sent encrypted packages");
+
+		if (SUCCESS != status)
+		{
+			printf_s("Unsuccessfully send string - server");
+			goto Exit;
+		}
 	}
-	
 Exit:
 	return status;
 }

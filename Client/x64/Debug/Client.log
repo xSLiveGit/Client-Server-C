@@ -1,8 +1,3 @@
-﻿  status.c
-  main.c
-  client.c
-  ClientProtocolSide.c
-d:\faculta\an2\cursc\c client server\client\clientprotocolside.c(159): warning C4267: 'function': conversion from 'size_t' to 'DWORD', possible loss of data
-  Generating Code...
+﻿  client.c
   Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Client.exe
   Client.vcxproj -> D:\Faculta\an2\CursC\C Client Server\x64\Debug\Client.pdb (Partial PDB)
