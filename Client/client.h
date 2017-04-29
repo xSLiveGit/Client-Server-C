@@ -1,19 +1,20 @@
+
 #ifndef _CLIENT_H_
 #define _CLIENT_H_
 #include <Windows.h>
 #include "../Client/status.h"
-#include "../Client/ClientProtocolSide.h"
+#include "../Client/Protocol.h"
 
 
 typedef struct _CLIENT
 {
 	STATUS(*RemoveClient)(struct _CLIENT* pclient);
 	STATUS(*OpenConnexion)(struct _CLIENT* pclient);
-	STATUS(*Run)(struct _CLIENT* pclient);
-	PCLIENT_PROTOCOL clientProtocol;
-	char* pipeName;
+	STATUS(*Run)(struct _CLIENT* pclient, CHAR* inputFileHandle, CHAR* outputFileHandle);
+	PPROTOCOL clientProtocol;
+	CHAR* pipeName;
 }CLIENT, *PCLIENT;
 
-STATUS CreateClient(PCLIENT pclient, char* pipeName);
+STATUS CreateClient(PCLIENT pclient, CHAR* pipeName);
 
 #endif //! _CLIENT_H_

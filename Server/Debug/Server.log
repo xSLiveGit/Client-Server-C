@@ -1,8 +1,0 @@
-﻿  main.c
-  ServerProtocolSide.c
-c:\users\sergiu\documents\visual studio 2015\projects\c client server\server\serverprotocolside.c(185): warning C4189: 'tempMessage': local variable is initialized but not referenced
-  server.c
-c:\users\sergiu\documents\visual studio 2015\projects\c client server\client\server.c(32): warning C4100: 'encryptionKey': unreferenced formal parameter
-  Generating Code...
-  Server.vcxproj -> C:\Users\Sergiu\documents\visual studio 2015\Projects\C Client Server\Debug\Server.exe
-  Server.vcxproj -> C:\Users\Sergiu\documents\visual studio 2015\Projects\C Client Server\Debug\Server.pdb (Partial PDB)
