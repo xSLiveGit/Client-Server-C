@@ -22,8 +22,8 @@ int main()
 	CreateServer(&server, "nume");
 	//server.OpenConnexion(&server);
 	server.Run(&server);
+	printf_s("gata\n");
 	server.RemoveServer(&server);
-
 
 	getchar();
 	_CrtDumpMemoryLeaks();

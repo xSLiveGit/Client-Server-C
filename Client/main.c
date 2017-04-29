@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 	client.OpenConnexion(&client);
 	client.Run(&client, "input.txt", "output.txt");
 
-	//client.RemoveClient(&client);
+	client.RemoveClient(&client);
 
 	getchar();
 

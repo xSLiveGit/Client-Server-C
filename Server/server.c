@@ -64,7 +64,7 @@ STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int
 		goto Exit;
 	}
 	status = SUCCESS;
-	keyFroCryptLength = strlen(encryptionKey);
+	keyFroCryptLength = (unsigned int)strlen(encryptionKey);
 
 	for (index = 0; index < size; index++)
 	{
@@ -94,8 +94,8 @@ STATUS RemoveServer(PSERVER pserver)
 
 	// --- Process ---
 	pserver->SetStopFlag(pserver);
-	while (pserver->referenceCounter);
-	status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
+	//while (pserver->referenceCounter);
+	//status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
 	free(pserver->serverProtocol);
 
 	// --- Exit/CleanUp ---
@@ -133,40 +133,29 @@ STATUS Run(PSERVER pserver)
 	BOOL res;
 	int packetNumbers;
 	PACKAGE package;
-	char  username[4096];
-	char  password[4096];
 	CHAR tempBuffer[20];
 	PARAMS_LOAD params;
-	HANDLE hThread;
 	DWORD dwThreadId;
 	REQUEST_TYPE request;
 	RESPONSE_TYPE response;
 	DWORD readedBytes;
-	SECURITY_ATTRIBUTES security;
-	security.bInheritHandle = TRUE;
-	security.lpSecurityDescriptor = NULL;
-	security.nLength = sizeof(security);
-	unsigned size;
-
+	status = SUCCESS;
+	HANDLE hThread[10];
+	int hSize = 0;
 	int clientPipeIndex;
 	clientPipeIndex = 0;
-
+	pserver->referenceCounter = 0;
+	int times = 1;
 	while (TRUE)
 	{
 	Start:
 		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
-//		res = ConnectNamedPipe(pserver->serverProtocol->pipeHandle,NULL);
-//		if(!res)
-//		{
-//			printf_s("Connect named pipe error\n");
-//			goto Exit;
-//		}
 		printf_s("Server start new sesion\n");
 		status = SUCCESS;
 		res = TRUE;
 		packetNumbers = 0;
 
-		hThread = NULL;
+		
 		dwThreadId = 0;
 		printf_s("Server pipe name: %s. Principal handle: %p.\n", pserver->pipeName, pserver->serverProtocol->pipeHandle);
 
@@ -194,22 +183,21 @@ STATUS Run(PSERVER pserver)
 			//Create in params.
 			StringCchCopyA(params.fileName, sizeof(params.fileName), pserver->pipeName);
 			StringCchCatA(params.fileName, sizeof(params.fileName), tempBuffer);
-
+			size_t nr;
 			StringCchCopyA(package.buffer, sizeof(package.buffer), params.fileName);
-			StringCchLengthA(package.buffer, sizeof(package.buffer), &size);
-			package.size = (DWORD)size;
+			StringCchLengthA(package.buffer, sizeof(package.buffer), &nr);
+			package.size = (DWORD)nr;
 			package.size++;
 			params.fileName[package.size] = '\0';
-
-			hThread = CreateThread(
+			hThread[hSize] = CreateThread(
 				NULL,              // no security attribute 
-				5000 * BUFSIZE,    // stack size 
+				0,					// stack size 
 				InstanceThread,    // thread proc
 				(LPVOID)(&params), // thread parameter 
 				0,                 // not suspended 
 				&dwThreadId		   // returns thread ID
 				);       
-
+			hSize++;
 			if (hThread == NULL)
 			{
 				printf_s("CreateThread failed, GLE=%d.\n", GetLastError());
@@ -222,7 +210,13 @@ STATUS Run(PSERVER pserver)
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &package, sizeof(package));
 		}
+		times--;
+		if (times == 0)
+			break;
 	}
+	WaitForMultipleObjects(hSize, hThread, TRUE, INFINITE);
+	
+	printf_s("aici\n");
 Exit:
 	return status;
 }
@@ -363,9 +357,6 @@ Exit:
 
 DWORD WINAPI InstanceThread(LPVOID lpvParam)
 {
-	HANDLE hHeap = GetProcessHeap();
-	TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, BUFSIZE*sizeof(TCHAR));
-	TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, BUFSIZE*sizeof(TCHAR));
 	STATUS status;
 	BOOL res;
 	PARAMS_LOAD params;
@@ -377,7 +368,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	//@TODO temp for testing
 	PACKAGE packageList[11];
 	DWORD packageListSize;
-	unsigned long long size;
 	PPROTOCOL protocol;
 
 	protocol = NULL;
@@ -392,32 +382,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	nPackagesToSendBack = 0;
 	packageListSize = 0;
 
-	if (lpvParam == NULL)
-	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL value in lpvParam.\n");
-		printf("   InstanceThread exitting.\n");
-		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
-		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
-		return (DWORD)-1;
-	}
-	if (pchRequest == NULL)
-	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
-		printf("   InstanceThread exitting.\n");
-		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
-		return (DWORD)-1;
-	}
-	if (pchReply == NULL)
-	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
-		printf("   InstanceThread exitting.\n");
-		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
-		return (DWORD)-1;
-	}
-
 	params = *((PARAMS_LOAD*)lpvParam);
 	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
 	if(NULL == protocol)
@@ -427,7 +391,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	}
 	CreateProtocol(protocol);
 	protocol->InitializeConnexion(protocol, params.fileName);
-//	ConnectNamedPipe(protocol->pipeHandle,NULL);
 
 	printf_s("In thread, the handle is: %p\n", protocol->pipeHandle);
 	if (!res)
@@ -521,7 +484,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			{
 				goto Exit;
 			}
-			for (int i = 0; i < packageListSize - 1; i++)
+			for (unsigned int i = 0; i < packageListSize - 1; i++)
 			{
 				packageList[i] = packageList[i + 1];
 			}
@@ -534,12 +497,9 @@ Exit:
 	printf_s("Exit thread\n");
 	FlushFileBuffers(protocol->pipeHandle);
 	DisconnectNamedPipe(protocol->pipeHandle);
-	CloseHandle(protocol->pipeHandle);
-	HeapFree(hHeap, 0, pchRequest);
-	HeapFree(hHeap, 0, pchReply);
-
+//	CloseHandle(protocol->pipeHandle);
 	printf("InstanceThread exitting.\n");
-	//	ExitThread(1);
+	//ExitThread(1);
 	return 1;
 }
 

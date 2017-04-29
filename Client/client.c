@@ -58,7 +58,7 @@ STATUS RemoveClient(PCLIENT pclient)
 
 	status = SUCCESS;
 
-	status = pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
+	//status = pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
 	free(pclient->clientProtocol);
 	return status;
 }
@@ -151,7 +151,7 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 		printf_s("Client accepted response:\n");
 		pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &package, sizeof(package), &readedBytes);
 		package.buffer[package.size] = '\0';
-		pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
+		//pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
 		Sleep(2000);
 		status = pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, package.buffer);
 		printf_s("New name is: %s New handle is: %p\n", package.buffer, pclient->clientProtocol->pipeHandle);
@@ -203,17 +203,17 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 Exit:
 	request = FINISH_CONNECTION_REQUEST;
 	pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
-	if (NULL != inputFileHandle)
-	{
-		CloseHandle(inputFileHandle);
-		inputFileHandle = NULL;
-	}
-	if (NULL != outputFileHandle)
-	{
-		CloseHandle(outputFileHandle);
-		outputFileHandle = NULL;
-	}
-	pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
+	if (INVALID_HANDLE_VALUE != inputFileHandle && NULL != inputFileHandle)
+//	{
+//		CloseHandle(inputFileHandle);
+//		inputFileHandle = NULL;
+//	}
+//	if (INVALID_HANDLE_VALUE != outputFileHandle && NULL != outputFileHandle)
+//	{
+//		CloseHandle(outputFileHandle);
+//		outputFileHandle = NULL;
+//	}
+//	pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
 	return status;
 }
 
@@ -252,7 +252,7 @@ STATUS LoginHandler(CHAR* username, CHAR* password, PPROTOCOL protocol)
 		goto Exit;
 	}
 	printf_s("The login request has been sent.\n");
-	package.size = strlen(username);
+	package.size = (DWORD)strlen(username);
 	memcpy(package.buffer, username, package.size);
 	package.buffer[package.size] = '\0';
 	status = protocol->SendPackage(protocol, &package, sizeof(package));
@@ -263,7 +263,7 @@ STATUS LoginHandler(CHAR* username, CHAR* password, PPROTOCOL protocol)
 		goto Exit;
 	}
 
-	package.size = strlen(password);
+	package.size = (DWORD)strlen(password);
 	memcpy(package.buffer, password, package.size);
 	package.buffer[package.size] = '\0';
 	protocol->SendPackage(protocol, &package, sizeof(package));
