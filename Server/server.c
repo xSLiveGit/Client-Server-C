@@ -11,27 +11,31 @@ STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
 STATUS Run(PSERVER pserver);
-STATUS IsValidUser(char* username, char* password);
+STATUS IsValidUser(CHAR* username, CHAR* password);
+STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
+
+
 //	---	End public functions declarations: ---
 
-char* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
+CHAR* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
 DWORD nUsers = 2;
 #define BUFSIZE 4096
 
 typedef struct {
-	char fileName[100];
+	CHAR fileName[100];
+	PLOGGER logger;
 } PARAMS_LOAD;
 
 //	---	Private functions declarations: ---
-static char globalEncryptionKey[] = "encryptionKey";
-STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int size);
-STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey);
+static CHAR globalEncryptionKey[] = "encryptionKey";
+STATUS CryptMessage(CHAR* stringToBeProcessed, CHAR* encryptionKey, unsigned int size);
+STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey);
 DWORD WINAPI InstanceThread(LPVOID lpvParam);
 STATUS ValidUserStatusToResponse(STATUS status, RESPONSE_TYPE* response);
 
 //  ---	End private functions declarations: ---
 
-STATUS CreateServer(PSERVER pserver, char* pipeName)
+STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 {
 	STATUS status = 0;
 	if (NULL == pserver)
@@ -42,7 +46,21 @@ STATUS CreateServer(PSERVER pserver, char* pipeName)
 	pserver->referenceCounter = 0;
 	pserver->pipeName = pipeName;
 	pserver->serverProtocol = (PROTOCOL*)malloc(sizeof(PROTOCOL));
-	CreateProtocol(pserver->serverProtocol);
+	if(NULL == pserver->serverProtocol)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	status = CreateProtocol(pserver->serverProtocol);
+	if(SUCCESS != status)
+	{
+		goto Exit;
+	}
+	status = CreateLogger(&(pserver->logger), loggerOutputFilePath);
+	if (SUCCESS != status)
+	{
+		goto Exit;
+	}
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
@@ -52,7 +70,7 @@ Exit:
 	return status;
 }
 
-STATUS CryptMessage(char* stringToBeProcessed, char* encryptionKey, unsigned int size)
+STATUS CryptMessage(CHAR* stringToBeProcessed, CHAR* encryptionKey, unsigned int size)
 {
 	unsigned int index;
 	unsigned int keyFroCryptLength;
@@ -97,7 +115,8 @@ STATUS RemoveServer(PSERVER pserver)
 	//while (pserver->referenceCounter);
 	//status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
 	free(pserver->serverProtocol);
-
+	pserver->serverProtocol = NULL;
+	DestroyLogger(&(pserver->logger));
 	// --- Exit/CleanUp ---
 	return status;
 }
@@ -149,20 +168,21 @@ STATUS Run(PSERVER pserver)
 	while (TRUE)
 	{
 	Start:
-		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
 		printf_s("Server start new sesion\n");
+		pserver->logger->Info(pserver->logger,"Server start new sesion");
 		status = SUCCESS;
 		res = TRUE;
 		packetNumbers = 0;
-
-		
-		dwThreadId = 0;
-		printf_s("Server pipe name: %s. Principal handle: %p.\n", pserver->pipeName, pserver->serverProtocol->pipeHandle);
-
+		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);		
 		if (SUCCESS != status)
 		{
+			pserver->logger->Warning(pserver->logger,"Initialize connexion has been failed");
 			goto Exit;
 		}
+		pserver->logger->Info(pserver->logger, "Successfully initialize connexion");
+
+		dwThreadId = 0;
+		printf_s("Server pipe name: %s. Principal handle: %p.\n", pserver->pipeName, pserver->serverProtocol->pipeHandle);
 
 		printf_s("Successfully initialize conexion - server\n");
 		pserver->serverProtocol->ReadPackage(pserver->serverProtocol, &request, sizeof(REQUEST_TYPE), &readedBytes);
@@ -189,8 +209,9 @@ STATUS Run(PSERVER pserver)
 			package.size = (DWORD)nr;
 			package.size++;
 			params.fileName[package.size] = '\0';
+			params.logger = pserver->logger;
 			hThread[hSize] = CreateThread(
-				NULL,              // no security attribute 
+				pserver->logger->lpSecurityAtributes,              // no security attribute 
 				0,					// stack size 
 				InstanceThread,    // thread proc
 				(LPVOID)(&params), // thread parameter 
@@ -221,7 +242,7 @@ Exit:
 	return status;
 }
 
-STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey)
+STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey)
 {
 	int index;
 	STATUS status;
@@ -243,8 +264,8 @@ STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey)
 *			- Verify if given credentials are valid credentials
 *
 *	Parameters:
-*		- _IN_		char*		username - NULL terminated char*
-*		- _IN_		char*		password - NULL terminated char*
+*		- _IN_		CHAR*		username - NULL terminated CHAR*
+*		- _IN_		CHAR*		password - NULL terminated CHAR*
 
 *	Returns:
 *		- VALID_USER				-	if credentials are valid
@@ -252,7 +273,7 @@ STATUS CryptAllMessages(PACKAGE *list, int size, char* encryptionKey)
 *		- WRONG_CREDENTIALS			-	if credentials are not valid
 */
 
-STATUS IsValidUser(char* username, char* password)
+STATUS IsValidUser(CHAR* username, CHAR* password)
 {
 	STATUS status;
 	int i;
@@ -369,11 +390,10 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	PACKAGE packageList[11];
 	DWORD packageListSize;
 	PPROTOCOL protocol;
+	PLOGGER logger;
 
 	protocol = NULL;
-	DWORD cbBytesRead = 0, cbReplyBytes = 0, cbWritten = 0;
-	BOOL fSuccess = FALSE;
-	HANDLE hPipe = NULL;
+	logger = NULL;
 	status = SUCCESS;
 	res = TRUE;
 	StringCchCopyA(package.buffer, sizeof(package.buffer), "");
@@ -390,8 +410,10 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 	CreateProtocol(protocol);
+	logger = params.logger;
 	protocol->InitializeConnexion(protocol, params.fileName);
-
+	printf_s("Before logger");
+	logger->Info(logger, "New connetion has been esteblished in thread");
 	printf_s("In thread, the handle is: %p\n", protocol->pipeHandle);
 	if (!res)
 	{

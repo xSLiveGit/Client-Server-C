@@ -1,0 +1,2 @@
+INFO:  1/5/2017 11:58:15:627 Server start new sesion
+INFO:  1/5/2017 11:58:25:808 Successfully initialize connexion

@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include "../Server/status.h"
 #include "../Server/Protocol.h"
+#include "Logger.h"
 
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
@@ -19,12 +20,13 @@ typedef struct _SERVER
 	STATUS(*SetStopFlag)(struct _SERVER* pserver);
 	STATUS(*Run)(struct _SERVER* pserver);
 	PPROTOCOL serverProtocol;
-	char* pipeName;
+	CHAR* pipeName;
 	DWORD flagOptions;
 	DWORD referenceCounter;
+	PLOGGER logger;
 }SERVER, *PSERVER;
 
-STATUS CreateServer(PSERVER pserver, char* pipeName);
+STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
 
 
 

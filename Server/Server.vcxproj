@@ -142,12 +142,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Logger.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="Protocol.c" />
     <ClCompile Include="Server.c" />
     <ClCompile Include="Status.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Status.h" />

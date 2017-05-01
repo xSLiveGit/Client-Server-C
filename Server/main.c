@@ -18,11 +18,17 @@
 int main()
 {
 	SERVER server;
+	STATUS status = SUCCESS;
 
-	CreateServer(&server, "nume");
-	//server.OpenConnexion(&server);
+	status =CreateServer(&server, "nume","logger.txt");
+	if(!SUCCESS == status)
+	{
+		printf_s("FAILED TO INITIALIZE SERVER!!!\n");
+		goto Exit;
+	}
 	server.Run(&server);
 	printf_s("gata\n");
+Exit:
 	server.RemoveServer(&server);
 
 	getchar();
