@@ -11,6 +11,6 @@ typedef struct _LOGGER{
 	LPSECURITY_ATTRIBUTES lpSecurityAtributes;
 } LOGGER, *PLOGGER;
 
-STATUS CreateLogger(PLOGGER *plogger,CHAR* outputFilePath);
-STATUS DestroyLogger(PLOGGER *plogger);
+STATUS InitializeLogger(PLOGGER plogger,CHAR* outputFilePath);
+STATUS DestroyLogger(PLOGGER plogger);
 #endif//!_LOGGER_H_

@@ -1,2 +1,12 @@
-INFO:  1/5/2017 11:58:15:627 Server start new sesion
-INFO:  1/5/2017 11:58:25:808 Successfully initialize connexion
+ 1/5/2017 12:45:17: 715 INFO: Server start new sesion
+ 1/5/2017 12:45:23: 930 INFO: Successfully initialize connexion
+ 1/5/2017 12:45:23: 931 INFO: Accepted connection by initialize request
+ 1/5/2017 12:45:33: 874 INFO: New connetion has been esteblished in thread
+ 1/5/2017 12:45:33: 876 INFO: The server has received a login request
+ 1/5/2017 12:45:33: 876 INFO: Valid user has been accepted
+ 1/5/2017 12:45:33: 876 INFO: The server has received an encryption message request
+ 1/5/2017 12:45:33: 877 INFO: The server read the encryption package
+ 1/5/2017 12:45:33: 877 INFO: Server is trying to encrypt given message.
+
+ 1/5/2017 12:45:33: 877 INFO: The server has received an encryption request
+ 1/5/2017 12:45:33: 877 INFO: The server has received a logout request

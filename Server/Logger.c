@@ -3,57 +3,47 @@
 #include <stdio.h>
 #include <strsafe.h>
 
-STATUS CreateLogger(PLOGGER *plogger, CHAR* outputFilePath);
+STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath);
 STATUS Info (PLOGGER logger, CHAR* message);
 STATUS Warning (PLOGGER logger, CHAR* message);
-STATUS DestroyLogger(PLOGGER *plogger);
+STATUS DestroyLogger(PLOGGER plogger);
 
 
-STATUS CreateLogger(PLOGGER *plogger, CHAR* outputFilePath)
+STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath)
 {
 	STATUS status;
-	PLOGGER logger;
 	
 	status = SUCCESS;
-	logger = NULL;
 	if(NULL == plogger)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 	
-	logger = (PLOGGER)malloc(sizeof(logger));
-	if(NULL == logger)
-	{
-		status = MALLOC_FAILED_ERROR;
-		*plogger = NULL;
-		goto Exit;
-	}
 
-	logger->lpSecurityAtributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
-	logger->Info = &Info;
-	logger->Warning = &Warning;
-	logger->lpSecurityAtributes->bInheritHandle = TRUE;
-	logger->lpSecurityAtributes->lpSecurityDescriptor = NULL;
-	logger->lpSecurityAtributes->nLength = sizeof(*(logger->lpSecurityAtributes));
-	InitializeCriticalSection(&(logger->criticalSection));
+	plogger->lpSecurityAtributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
+	plogger->Info = &Info;
+	plogger->Warning = &Warning;
+	plogger->lpSecurityAtributes->bInheritHandle = TRUE;
+	plogger->lpSecurityAtributes->lpSecurityDescriptor = NULL;
+	plogger->lpSecurityAtributes->nLength = sizeof(*(plogger->lpSecurityAtributes));
+	InitializeCriticalSection(&(plogger->criticalSection));
 	if(NULL == outputFilePath)
 	{
-		logger->outputFileHandle = stdout;
+		plogger->outputFileHandle = stdout;
 	}
 	else
 	{
-		logger->outputFileHandle = CreateFileA(
+		plogger->outputFileHandle = CreateFileA(
 			outputFilePath,					//_In_     LPCTSTR               lpFileName,
 			GENERIC_WRITE,					//_In_     DWORD                 dwDesiredAccess,
 			0,								//_In_     DWORD                 dwShareMode,
-			logger->lpSecurityAtributes,	//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+			plogger->lpSecurityAtributes,	//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
 			CREATE_ALWAYS,					//_In_     DWORD                 dwCreationDisposition,
 			FILE_ATTRIBUTE_NORMAL,			//_In_     DWORD                 dwFlagsAndAttributes,
 			NULL							//_In_opt_ HANDLE                hTemplateFile
 			);
 	}
-	*plogger = logger;
 Exit:
 	return status;
 }
@@ -140,27 +130,23 @@ STATUS Warning(PLOGGER logger,CHAR* message)
 	return WriteGenericLoggerMessage(logger, "WARNING: ", message);
 }
 
-STATUS DestroyLogger(PLOGGER *plogger)
+STATUS DestroyLogger(PLOGGER plogger)
 {
 	STATUS status = SUCCESS;
-	PLOGGER logger;
 
 	status = SUCCESS;
 
-	if(NULL ==  plogger || NULL == *plogger)
+	if(NULL ==  plogger )
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-	logger = *plogger;
 
-	free(logger->lpSecurityAtributes);
-	logger->lpSecurityAtributes = NULL;
-	FlushFileBuffers(logger->outputFileHandle);
-	CloseHandle(logger->outputFileHandle);
-	DeleteCriticalSection(&(logger->criticalSection));
-	logger = NULL;
-	*plogger = NULL;
+	free(plogger->lpSecurityAtributes);
+	plogger->lpSecurityAtributes = NULL;
+	FlushFileBuffers(plogger->outputFileHandle);
+	CloseHandle(plogger->outputFileHandle);
+	DeleteCriticalSection(&(plogger->criticalSection));
 Exit:
 	return status;
 }

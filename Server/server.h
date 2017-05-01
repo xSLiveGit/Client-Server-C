@@ -23,7 +23,7 @@ typedef struct _SERVER
 	CHAR* pipeName;
 	DWORD flagOptions;
 	DWORD referenceCounter;
-	PLOGGER logger;
+	LOGGER logger;
 }SERVER, *PSERVER;
 
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
