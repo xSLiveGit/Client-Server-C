@@ -2,6 +2,17 @@
 #include <conio.h>
 #include "MyHeap.h"
 #include "Threadpool.h"
+#include <crtdbg.h>
+#define _CRTDBG_MAP_ALLOC  
+
+#ifdef _DEBUG
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+// Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
+// allocations to be of _CLIENT_BLOCK type
+#else
+#define DBG_NEW new
+#endif
+
 int Compare(LPVOID item1,LPVOID item2)
 {
 	int item_1 = *((int*)item1);
@@ -34,7 +45,7 @@ int main()
 		val = (LPVOID)(&(vector[i]));
 		threadPool->Add(threadPool, val);
 	}
-	Sleep(20000);
+	Sleep(1000);
 	DestroyThreadPool(&threadPool);
 //	status = CreateMyBlockingQueue(&blockingQueue);
 //	int i;
@@ -80,5 +91,7 @@ int main()
 //		free(value);
 //	}
 	_getch();
+	_CrtDumpMemoryLeaks();
+
 	return 0;
 }

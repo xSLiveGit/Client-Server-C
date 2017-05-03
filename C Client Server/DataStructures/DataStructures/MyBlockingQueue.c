@@ -102,6 +102,7 @@ STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
 	_blockingQueue->tail = NULL;
 	_blockingQueue->size = 0;
 	DeleteCriticalSection(&(_blockingQueue->criticalSection));
+	free(_blockingQueue);
 	_blockingQueue = NULL;
 Exit:
 	*blockingQueue = NULL;
@@ -149,7 +150,10 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 		}
 		else
 		{
-			timeToStay += 5;
+			if(timeToStay < 500)
+			{
+				timeToStay += 5;
+			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
 			printf_s("Am stat odata\n");
 			Sleep(timeToStay);
