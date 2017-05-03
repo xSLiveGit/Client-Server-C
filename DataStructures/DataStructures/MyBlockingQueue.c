@@ -1,7 +1,7 @@
 #include "MyBlockingQueue.h"
 #include <stdio.h>
 
-LPVOID Take(PBLOCKING_QUEUE thisQueue, STATUS *status);
+STATUS Take(PBLOCKING_QUEUE thisQueue, LPVOID *value);
 STATUS Add (PBLOCKING_QUEUE thisQueue, LPVOID value);
 STATUS CreateBlockingQueue(PBLOCKING_QUEUE blockingQueue);
 STATUS DestroyBlockingQueue(PBLOCKING_QUEUE blockingQueue);
@@ -99,18 +99,18 @@ Exit:
  * !Assume that status != NULL
  *
  */
-LPVOID Take(PBLOCKING_QUEUE thisQueue, STATUS *status)
+STATUS Take(PBLOCKING_QUEUE thisQueue, LPVOID *value)
 {
 	PNODE tempNode;
-	LPVOID value;
+	STATUS status;
 
-	value = NULL;
+
 	tempNode = NULL;
 	status = SUCCESS;
 
-	if(NULL == thisQueue)
+	if((NULL == thisQueue) || (NULL == value))
 	{
-		*status = NULL_POINTER_ERROR;
+		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 
@@ -127,9 +127,8 @@ LPVOID Take(PBLOCKING_QUEUE thisQueue, STATUS *status)
 				thisQueue->tail = NULL;//thisQuete is allready NULL from thisQueue->head = thisQueue->head->next;
 			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
-			value = tempNode->value;
+			*value = tempNode->value;
 			free(tempNode);
-			return value;
 			goto Exit;
 		}
 		else

@@ -71,12 +71,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>D:\Faculta\an2\CursC\C Client Server\C Client Server\DataStructures\DataStructures;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Faculta\an2\CursC\C Client Server\C Client Server\DataStructures\DataStructures;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>D:\Faculta\an2\CursC\C Client Server\C Client Server\DataStructures\DataStructures;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Faculta\an2\CursC\C Client Server\C Client Server\DataStructures\DataStructures;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

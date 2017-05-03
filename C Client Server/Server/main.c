@@ -1,5 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
-
+//#include <MyBlockingQueue.h>
 #include "server.h"
 #define _CRTDBG_MAP_ALLOC  
 #include <stdlib.h>  
@@ -19,6 +19,9 @@ int main()
 {
 	SERVER server;
 	STATUS status = SUCCESS;
+	//PMY_BLOCKING_QUEUE queue;
+	
+	//CreateMyBlockingQueue(&queue);
 
 	status =CreateServer(&server, "nume","logger.txt");
 	if(!SUCCESS == status)

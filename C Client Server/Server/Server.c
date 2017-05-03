@@ -10,7 +10,7 @@
 STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
-STATUS Run(PSERVER pserver);
+STATUS Start(PSERVER pserver);
 STATUS IsValidUser(CHAR* username, CHAR* password);
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
 
@@ -64,7 +64,7 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
-	pserver->Run = &Run;
+	pserver->Run = &Start;
 	pserver->flagOptions = 0;
 Exit:
 	return status;
@@ -146,7 +146,7 @@ Exit:
 /**
 *		_IN_			PSERVER			pserver -
 */
-STATUS Run(PSERVER pserver)
+STATUS Start(PSERVER pserver)
 {
 	int iThread;
 	STATUS status;
@@ -165,7 +165,7 @@ STATUS Run(PSERVER pserver)
 	int clientPipeIndex;
 	clientPipeIndex = 0;
 	pserver->referenceCounter = 0;
-	int times = 1;
+	//int times = 1;
 	iThread = 0;
 	while (TRUE)
 	{
@@ -232,9 +232,9 @@ STATUS Run(PSERVER pserver)
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &package, sizeof(package));
 		}
-		times--;
-		if (times == 0)
-			break;
+		//times--;
+		//if (times == 0)
+		//	break;
 	}
 	for (iThread = 0; iThread < hSize;iThread++)
 	{
@@ -397,6 +397,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	DWORD packageListSize;
 	PPROTOCOL protocol;
 	PLOGGER logger;
+	CHAR encryptionKey[100];
 
 	protocol = NULL;
 	logger = NULL;
@@ -474,6 +475,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		}
 	}
 
+	protocol->ReadPackage(protocol, &encryptionKey, sizeof(encryptionKey), &nReadedBytes);
+	encryptionKey[nReadedBytes] = '\0';
+
 	while (1)
 	{
 		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
@@ -501,7 +505,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			//@TODO Here we will put the package in a threadpool
 			package.buffer[package.size] = '\0';
 			logger->Info(logger, "Server is trying to encrypt given message.\n");
-			CryptMessage(package.buffer, globalEncryptionKey, package.size);
+			CryptMessage(package.buffer, encryptionKey, package.size);
 			packageList[packageListSize] = package;
 			packageListSize++;
 			nPackagesToSendBack++;

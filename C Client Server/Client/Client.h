@@ -10,7 +10,7 @@ typedef struct _CLIENT
 {
 	STATUS(*RemoveClient)(struct _CLIENT* pclient);
 	STATUS(*OpenConnexion)(struct _CLIENT* pclient);
-	STATUS(*Run)(struct _CLIENT* pclient, CHAR* inputFileHandle, CHAR* outputFileHandle);
+	STATUS(*Run)(struct _CLIENT* pclient, CHAR* inputFileHandle, CHAR* outputFileHandle,CHAR* encryptionKey);
 	PPROTOCOL clientProtocol;
 	CHAR* pipeName;
 }CLIENT, *PCLIENT;

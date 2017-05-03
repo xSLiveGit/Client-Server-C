@@ -11,7 +11,7 @@
 
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
-STATUS Run(PCLIENT pclient, CHAR*, CHAR*);
+STATUS Start(PCLIENT pclient, CHAR*, CHAR*,CHAR* encryptionKey);
 STATUS ExportAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle);
 STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE openedInputFileHandle, DWORD totalBytesSize);
 STATUS ReadAllEncryptedPackagesAndWriteInTheOutputFile(HANDLE openedOutputFileHandle, DWORD nPackages, PPROTOCOL protocol);
@@ -38,7 +38,7 @@ STATUS CreateClient(PCLIENT pclient, CHAR* pipeName)
 	CreateProtocol(pclient->clientProtocol);
 	pclient->OpenConnexion = &OpenConnexion;
 	pclient->RemoveClient = &RemoveClient;
-	pclient->Run = &Run;
+	pclient->Run = &Start;
 Exit:
 	return status;
 }
@@ -63,7 +63,7 @@ STATUS RemoveClient(PCLIENT pclient)
 	return status;
 }
 
-STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
+STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryptionKey)
 {
 	// --- Declarations ---
 	STATUS status;
@@ -76,6 +76,7 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 	DWORD nSenededPackages;
 	PACKAGE package;
 	DWORD totalSize;
+	DWORD encrysize;
 	// --- End declarations ---
 
 	// --- Initializations ---
@@ -89,6 +90,7 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 	package.size = 0;
 	nSenededPackages = 0;
 	totalSize = 0;
+	encrysize = 0;
 	// --- End initializations ---
 
 	//Open file for processing them 
@@ -101,11 +103,13 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 		FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL					//_In_opt_ HANDLE                hTemplateFile
 		);
-	if (NULL == inputFileHandle)
+	if(NULL == inputFileHandle || INVALID_HANDLE_VALUE == inputFileHandle)
 	{
 		status = FILE_ERROR;
+		printf_s("inputFileHandle is invalid");
 		goto Exit;
 	}
+
 	printf_s("In client initial thread is: %p\n", pclient->clientProtocol->pipeHandle);
 	totalSize = GetFileSize(inputFileHandle, &totalSize);
 
@@ -118,7 +122,7 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 		FILE_ATTRIBUTE_NORMAL,					//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL									//	_In_opt_ HANDLE                hTemplateFile
 		);
-	if (NULL == outputFileHandle)
+	if (NULL == outputFileHandle || INVALID_HANDLE_VALUE == outputFileHandle)
 	{
 
 		status = FILE_ERROR;
@@ -179,7 +183,8 @@ STATUS Run(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile)
 	{
 		printf_s("Successfully login.\n");
 	}
-
+	encrysize = (DWORD)strlen(encryptionKey);
+	status = pclient->clientProtocol->SendPackage(pclient->clientProtocol, encryptionKey, encrysize);
 	//Encryption Area
 	printf_s("Try to send package for encrypt them\n");
 	status = ReadAndSendPackages(inputFileHandle, &nSenededPackages, totalSize, pclient);
@@ -204,15 +209,15 @@ Exit:
 	request = FINISH_CONNECTION_REQUEST;
 	pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
 	if (INVALID_HANDLE_VALUE != inputFileHandle && NULL != inputFileHandle)
-//	{
-//		CloseHandle(inputFileHandle);
-//		inputFileHandle = NULL;
-//	}
-//	if (INVALID_HANDLE_VALUE != outputFileHandle && NULL != outputFileHandle)
-//	{
-//		CloseHandle(outputFileHandle);
-//		outputFileHandle = NULL;
-//	}
+	{
+		CloseHandle(inputFileHandle);
+		inputFileHandle = NULL;
+	}
+	if (INVALID_HANDLE_VALUE != outputFileHandle && NULL != outputFileHandle)
+	{
+		CloseHandle(outputFileHandle);
+		outputFileHandle = NULL;
+	}
 //	pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
 	return status;
 }

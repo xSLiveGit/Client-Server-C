@@ -16,7 +16,7 @@ typedef struct _BLOCKING_QUEUE
 	PNODE head;
 	PNODE tail;
 	DWORD size;
-	LPVOID (*Take)(struct _BLOCKING_QUEUE *thisQueue, STATUS *status);
+	STATUS (*Take)(struct _BLOCKING_QUEUE *thisQueue, LPVOID *status);
 	STATUS (*Add) (struct _BLOCKING_QUEUE *thisQueue, LPVOID value);
 	CRITICAL_SECTION criticalSection;
 }BLOCKING_QUEUE,*PBLOCKING_QUEUE;

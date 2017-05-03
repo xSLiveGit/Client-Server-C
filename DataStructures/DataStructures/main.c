@@ -26,8 +26,10 @@ int main()
 	printf_s("%d", sizeof(DWORD));
 	for (int j = 0; j < 4;j++)
 	{
-		LPVOID value = blockingQueue.Take(&blockingQueue, &status);
-		int val = *((int*)value);
+		int val;
+		LPVOID value;
+		status = blockingQueue.Take(&blockingQueue,&value);
+		val = *((int*)value);
 		printf("%d ", val);
 	}
 	PMY_HEAP heap = (PMY_HEAP)malloc(sizeof(MY_HEAP));

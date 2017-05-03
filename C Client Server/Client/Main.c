@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
 	CreateClient(&client, "nume");
 	client.OpenConnexion(&client);
-	client.Run(&client, "input.txt", "output.txt");
+	client.Run(&client, "input.txt", "output.txt","mykey");
 
 	client.RemoveClient(&client);
 
