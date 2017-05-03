@@ -2,6 +2,9 @@
 #include "Logger.h"
 #include <stdio.h>
 #include <strsafe.h>
+#include "status.h"
+
+
 
 STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath);
 STATUS Info (PLOGGER logger, CHAR* message);
@@ -77,7 +80,7 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 	//StringCchLengthA(messageTypeIdentifier, (1 << 31), &tempBytes);
 	totalBytesMessage = strlen(message);
 	tempBytes = strlen(messageTypeIdentifier);
-	messageToWrite = (CHAR*)malloc(timeBytesSize * sizeof(CHAR) + tempBytes*sizeof(CHAR) + totalBytesMessage*sizeof(CHAR));
+	messageToWrite = (CHAR*)GlobalAlloc(0,100 + timeBytesSize * sizeof(CHAR) + tempBytes*sizeof(CHAR) + totalBytesMessage*sizeof(CHAR));
 	totalBytesMessage = timeBytesSize + tempBytes + totalBytesMessage;
 	if(NULL == messageToWrite)
 	{
@@ -96,11 +99,31 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 
 	GetSystemTime(&systemtime);
 	sprintf_s(tempBuffer,sizeof(tempBuffer), " %d/%d/%d %d:%d:%d:%4d ", systemtime.wDay,systemtime.wMonth,systemtime.wYear,systemtime.wHour,systemtime.wMinute,systemtime.wSecond,systemtime.wMilliseconds);
-	StringCchCopyA(messageToWrite, totalBytesMessage, tempBuffer);
-	StringCchCatA(messageToWrite, totalBytesMessage, messageTypeIdentifier);//Type: day/month/year hour:minute:second:milisecond
-	StringCchCatA(messageToWrite, totalBytesMessage, message);
-	StringCchLengthA(messageToWrite, totalBytesMessage, &length);
-	StringCchCatA(messageToWrite, totalBytesMessage, "\n");
+	res = StringCchCopyA(messageToWrite, totalBytesMessage, tempBuffer);
+	if(!res)
+	{
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+	}
+	res = StringCchCatA(messageToWrite, totalBytesMessage, messageTypeIdentifier);//Type: day/month/year hour:minute:second:milisecond
+	if (!res)
+	{
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+	}
+	res = StringCchCatA(messageToWrite, totalBytesMessage, message);
+	if (!res)
+	{
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+	}
+	res = StringCchLengthA(messageToWrite, totalBytesMessage, &length);
+	if (!res)
+	{
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+	}
+	res = StringCchCatA(messageToWrite, totalBytesMessage, "\n");
+	if (!res)
+	{
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+	}
 	EnterCriticalSection(&(logger->criticalSection));//I prefer an error margin for time rather than blocking the critical section for a long time
 	res = WriteFile(
 		logger->outputFileHandle,		//_In_        HANDLE       hFile,
@@ -116,7 +139,7 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 	}
 
 Exit:
-	free(messageToWrite);
+	GlobalFree(messageToWrite);
 	return status;
 }
 

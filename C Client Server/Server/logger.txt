@@ -1,1 +1,31 @@
- 1/5/2017 16:36:59: 919 INFO: Server start new sesion
+ 3/5/2017 23:37:38: 381 INFO: Server start new sesion
+ 3/5/2017 23:37:42: 663 INFO: Successfully initialize connexion
+ 3/5/2017 23:37:42: 664 INFO: Accepted connection by initialize request
+ 3/5/2017 23:37:42: 665 INFO: Server start new sesion
+ 3/5/2017 23:37:44: 666 INFO: New connetion has been esteblished in thread
+ 3/5/2017 23:37:48: 337 INFO: The server has received a login request
+ 3/5/2017 23:37:48: 337 INFO: Valid user has been accepted
+ 3/5/2017 23:37:56: 680 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 680 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 680 INFO: Server is trying to encrypt given message.
+
+ 3/5/2017 23:37:56: 686 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 686 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 686 INFO: Server is trying to encrypt given message.
+
+ 3/5/2017 23:37:56: 692 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 692 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 692 INFO: Server is trying to encrypt given message.
+
+ 3/5/2017 23:37:56: 694 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 694 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 694 INFO: Server is trying to encrypt given message.
+
+ 3/5/2017 23:37:56: 697 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 697 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 697 INFO: Server is trying to encrypt given message.
+
+ 3/5/2017 23:37:56: 703 INFO: The server has received an encryption message request
+ 3/5/2017 23:37:56: 703 INFO: The server read the encryption package
+ 3/5/2017 23:37:56: 703 INFO: Server is trying to encrypt given message.
+

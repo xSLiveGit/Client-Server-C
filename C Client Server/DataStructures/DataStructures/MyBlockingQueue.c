@@ -20,7 +20,7 @@ STATUS BlockingQueueAdd(PMY_BLOCKING_QUEUE thisQueue, LPVOID value)
 		goto Exit;
 	}
 
-	node = (PNODE)GlobalAlloc(0,sizeof(NODE));
+	node = (PNODE)HeapAlloc(GetProcessHeap(),0,sizeof(NODE));
 	if (NULL == node)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -64,7 +64,7 @@ STATUS CreateMyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
 		goto Exit;
 	}
 
-	_blockingQueue = (PMY_BLOCKING_QUEUE)GlobalAlloc(0,sizeof(MY_BLOCKING_QUEUE));
+	_blockingQueue = (PMY_BLOCKING_QUEUE)HeapAlloc(GetProcessHeap(),0,sizeof(MY_BLOCKING_QUEUE));
 	if (NULL == _blockingQueue)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -102,7 +102,7 @@ STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
 	_blockingQueue->tail = NULL;
 	_blockingQueue->size = 0;
 	DeleteCriticalSection(&(_blockingQueue->criticalSection));
-	GlobalFree(_blockingQueue);
+	HeapFree(GetProcessHeap(),0,_blockingQueue);
 	_blockingQueue = NULL;
 Exit:
 	*blockingQueue = NULL;
@@ -145,7 +145,7 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
 			*value = tempNode->value;
-			GlobalFree(tempNode);
+			HeapFree(GetProcessHeap(),0,tempNode);
 			goto Exit;
 		}
 		else

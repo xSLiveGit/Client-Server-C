@@ -4,8 +4,8 @@
 #include "server.h"
 #include <string.h>
 #include <strsafe.h>
-#include "../Client/client.h"
 #include "Globals.h"
+#include <psapi.h>
 
 //	---	Public functions declarations: ---
 STATUS OpenConnexion(PSERVER pserver);
@@ -14,8 +14,22 @@ STATUS SetStopFlag(PSERVER pserver);
 STATUS StartServer(PSERVER pserver);
 STATUS IsValidUser(CHAR* username, CHAR* password);
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
-
 //	---	End public functions declarations: ---
+
+
+
+//	---	Private functions declarations: ---
+STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, PPACKAGE package,CHAR* encryptionKey);
+STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage);
+static CHAR globalEncryptionKey[] = "encryptionKey";
+STATUS CryptMessage(CHAR* stringToBeProcessed, CHAR* encryptionKey, unsigned int size);
+STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey);
+DWORD WINAPI InstanceThread(LPVOID lpvParam);
+STATUS ValidUserStatusToResponse(STATUS status, RESPONSE_TYPE* response);
+STATUS CreatePackage(PPACKAGE *package);
+STATUS DestroyPackage(PPACKAGE *package);
+STATUS EncryptionRoutineForSpecialPackage(LPVOID);
+//  ---	End private functions declarations: ---
 
 CHAR* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
 DWORD nUsers = 2;
@@ -23,16 +37,75 @@ DWORD nUsers = 2;
 
 typedef struct {
 	CHAR fileName[100];
+	PMY_BLOCKING_QUEUE blockingQueue;
 } PARAMS_LOAD;
 
-//	---	Private functions declarations: ---
-static CHAR globalEncryptionKey[] = "encryptionKey";
-STATUS CryptMessage(CHAR* stringToBeProcessed, CHAR* encryptionKey, unsigned int size);
-STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey);
-DWORD WINAPI InstanceThread(LPVOID lpvParam);
-STATUS ValidUserStatusToResponse(STATUS status, RESPONSE_TYPE* response);
+STATUS CreatePackage(PPACKAGE *package)
+{
+	STATUS status;
+	PPACKAGE _package;
 
-//  ---	End private functions declarations: ---
+	status = SUCCESS;
+	_package = NULL;
+
+	if(NULL == package)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	_package = (PPACKAGE)malloc(sizeof(PACKAGE));
+	if(NULL == _package)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	*package = _package;
+
+Exit:
+	if(SUCCESS != status)
+	{
+		*package = NULL;
+	}
+	return status;
+}
+
+STATUS DestroyPackage(PPACKAGE *package)
+{
+	STATUS status;
+
+	status = SUCCESS;
+
+	if(NULL == package)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	free(*package);
+	*package = NULL;
+Exit:
+	return status;
+}
+
+STATUS EncryptionRoutineForSpecialPackage(LPVOID parameter)
+{
+	STATUS status;
+	PSPECIAL_PACKAGE specialPackage;
+
+	status = SUCCESS;
+	if(NULL == parameter)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	specialPackage = (PSPECIAL_PACKAGE)parameter;
+	status = CryptMessage(specialPackage->package->buffer, specialPackage->encryptionKey, specialPackage->package->size);
+	specialPackage->isEncrypted = TRUE;
+	//@TODO: aici trebuie sa vad ce fac daca esueaza criptarea
+Exit:
+	return status;
+}
 
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 {
@@ -60,11 +133,63 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 	{
 		goto Exit;
 	}
+
+	status = CreateThreadPool(&pserver->threadPool, &EncryptionRoutineForSpecialPackage);
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
 	pserver->Run = &StartServer;
 	pserver->flagOptions = 0;
+Exit:
+	return status;
+}
+
+STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, PPACKAGE package,CHAR* encryptionKey)
+{
+	STATUS status;
+	PSPECIAL_PACKAGE _specialPackage;
+
+	status = SUCCESS;
+	_specialPackage = NULL;
+
+	if((NULL == specialPackage) || (NULL == package))
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	_specialPackage = (PSPECIAL_PACKAGE)GlobalAlloc(0,sizeof(_specialPackage));
+	if(NULL == _specialPackage)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+
+	_specialPackage->isEncrypted = FALSE;
+	_specialPackage->package = package;
+	_specialPackage->encryptionKey = encryptionKey;
+Exit:
+	if(SUCCESS == status)
+	{
+		*specialPackage = _specialPackage;
+	}
+	return status;
+}
+
+STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage)
+{
+	STATUS status;
+
+	status = SUCCESS;
+
+	if(NULL == specialPackage)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	status = DestroyPackage(&((*specialPackage)->package));
+//	free(*specialPackage);
+	*specialPackage = NULL;
 Exit:
 	return status;
 }
@@ -158,6 +283,9 @@ STATUS StartServer(PSERVER pserver)
 	REQUEST_TYPE request;
 	RESPONSE_TYPE response;
 	DWORD readedBytes;
+	PMY_BLOCKING_QUEUE blockingQueue;
+
+	blockingQueue = NULL;
 	status = SUCCESS;
 	HANDLE hThread[10];
 	int hSize = 0;
@@ -166,6 +294,8 @@ STATUS StartServer(PSERVER pserver)
 	pserver->referenceCounter = 0;
 	//int times = 1;
 	iThread = 0;
+
+
 	while (TRUE)
 	{
 	StartServer:
@@ -183,7 +313,7 @@ STATUS StartServer(PSERVER pserver)
 		logger.Info(&logger, "Successfully initialize connexion");
 
 		dwThreadId = 0;
-
+		
 		printf_s("Successfully initialize conexion - server\n");
 		pserver->serverProtocol->ReadPackage(pserver->serverProtocol, &request, sizeof(REQUEST_TYPE), &readedBytes);
 		if (INITIALIZE_REQUEST == request)
@@ -198,6 +328,15 @@ STATUS StartServer(PSERVER pserver)
 			clientPipeIndex++;
 			logger.Info(&logger,"Accepted connection by initialize request");
 
+			status = CreateMyBlockingQueue(&blockingQueue);
+			if (SUCCESS != status)
+			{
+				response = REJECTED_CONNECTION_RESPONSE;
+				logger.Warning(&logger, "CreateBlockingQueue failed");
+				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
+				goto StartServer;
+			}
+
 			_itoa(clientPipeIndex, tempBuffer, 10);
 			//Create in params.
 			StringCchCopyA(params.fileName, sizeof(params.fileName), pserver->pipeName);
@@ -207,11 +346,14 @@ STATUS StartServer(PSERVER pserver)
 			StringCchLengthA(package.buffer, sizeof(package.buffer), &nr);
 			package.size = (DWORD)nr;
 			package.size++;
-			params.fileName[package.size] = '\0';
 			
+			params.fileName[package.size] = '\0';
+			params.blockingQueue = blockingQueue;
+			
+
 			hThread[hSize] = CreateThread(
 				logger.lpSecurityAtributes,              // no security attribute 
-				0,					// stack size 
+				5000000,					// stack size 
 				InstanceThread,    // thread proc
 				(LPVOID)(&params), // thread parameter 
 				0,                 // not suspended 
@@ -225,7 +367,6 @@ STATUS StartServer(PSERVER pserver)
 				logger.Warning(&logger, "Create thread opertaion failed");
 				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
 				goto StartServer;
-				return -1;
 			}
 			response = ACCEPTED_CONNECTION_RESPONSE;
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
@@ -390,13 +531,17 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	REQUEST_TYPE request;
 	RESPONSE_TYPE response;
 	DWORD nReadedBytes;
-	UINT32 nPackagesToSendBack;
+	LONG nPackagesToSendBack;
 	//@TODO temp for testing
-	PACKAGE packageList[11];
-	DWORD packageListSize;
 	PPROTOCOL protocol;
 	CHAR encryptionKey[100];
-
+	PMY_BLOCKING_QUEUE blockingQueue;
+	PSPECIAL_PACKAGE specialPackgeForThreadPool;
+	PPACKAGE packageForEncrypt;
+	INT timeToSleep;
+	ULONG li, ls;
+	timeToSleep = 10;
+	packageForEncrypt = NULL;
 	protocol = NULL;
 	status = SUCCESS;
 	res = TRUE;
@@ -404,9 +549,13 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	StringCchCopyA(package.optBuffer, sizeof(package.optBuffer), "");
 	nReadedBytes = 0;
 	nPackagesToSendBack = 0;
-	packageListSize = 0;
+	specialPackgeForThreadPool = NULL;
+	size_t heapMemory;
+	PROCESS_MEMORY_COUNTERS pmc;
 
 	params = *((PARAMS_LOAD*)lpvParam);
+	blockingQueue = params.blockingQueue;
+
 	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
 	if(NULL == protocol)
 	{
@@ -423,8 +572,32 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 	
+	GetCurrentThreadStackLimits(
+		&li,
+		&ls
+		);
+	printf_s("ci = %ul cs = %ul\n", li, ls);
+
 	while (1)//login request
 	{
+		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		{
+			printf("\tPageFaultCount: 0x%08X\n", pmc.PageFaultCount);
+			printf("\tPeakWorkingSetSize: 0x%08X\n",
+				pmc.PeakWorkingSetSize);
+			printf("\tWorkingSetSize: 0x%08X\n", pmc.WorkingSetSize);
+			printf("\tQuotaPeakPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPeakPagedPoolUsage);
+			printf("\tQuotaPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPagedPoolUsage);
+			printf("\tQuotaPeakNonPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPeakNonPagedPoolUsage);
+			printf("\tQuotaNonPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaNonPagedPoolUsage);
+			printf("\tPagefileUsage: 0x%08X\n", pmc.PagefileUsage);
+			printf("\tPeakPagefileUsage: 0x%08X\n\n\n",
+				pmc.PeakPagefileUsage);
+		}
 		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
 		printf_s("Readed request in login area.");
 		printf_s("code: %d\n", GetLastError());
@@ -476,6 +649,24 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 	while (1)
 	{
+		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		{
+			printf("\tPageFaultCount: 0x%08X\n", pmc.PageFaultCount);
+			printf("\tPeakWorkingSetSize: 0x%08X\n",
+				pmc.PeakWorkingSetSize);
+			printf("\tWorkingSetSize: 0x%08X\n", pmc.WorkingSetSize);
+			printf("\tQuotaPeakPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPeakPagedPoolUsage);
+			printf("\tQuotaPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPagedPoolUsage);
+			printf("\tQuotaPeakNonPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaPeakNonPagedPoolUsage);
+			printf("\tQuotaNonPagedPoolUsage: 0x%08X\n",
+				pmc.QuotaNonPagedPoolUsage);
+			printf("\tPagefileUsage: 0x%08X\n", pmc.PagefileUsage);
+			printf("\tPeakPagefileUsage: 0x%08X\n\n\n",
+				pmc.PeakPagefileUsage);
+		}
 		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
 		if (SUCCESS != status)
 		{
@@ -489,8 +680,13 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		}
 		if (ENCRYPTED_MESSAGE_REQUEST == request)
 		{
+			//@TODO verify with __try malloc error
+			status = CreatePackage(&packageForEncrypt);
+			status = CreateSpecialPackage(&specialPackgeForThreadPool, packageForEncrypt,encryptionKey);
+			packageForEncrypt->size = 0;
+
 			logger.Info(&logger, "The server has received an encryption message request");
-			status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
+			status = protocol->ReadPackage(protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
 			if (SUCCESS != status)
 			{
 				logger.Info(&logger, "The server could not read the encryption package");
@@ -499,12 +695,13 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			logger.Info(&logger, "The server read the encryption package");
 
 			//@TODO Here we will put the package in a threadpool
-			package.buffer[package.size] = '\0';
+			packageForEncrypt->buffer[packageForEncrypt->size] = '\0';
 			logger.Info(&logger, "Server is trying to encrypt given message.\n");
-			CryptMessage(package.buffer, encryptionKey, package.size);
-			packageList[packageListSize] = package;
-			packageListSize++;
-			nPackagesToSendBack++;
+			
+			blockingQueue->Add(blockingQueue, (LPVOID)specialPackgeForThreadPool);
+//			CryptMessage(package.buffer, encryptionKey, package.size);
+
+			nPackagesToSendBack = InterlockedIncrement(&nPackagesToSendBack);
 		}
 		else if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
 		{
@@ -524,17 +721,22 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 				logger.Warning(&logger, "The server can not send the ok response for encryption request");
 				goto Exit;
 			}
-			status = protocol->SendPackage(protocol, &packageList[0], sizeof(packageList[packageListSize]));
+			status = blockingQueue->Take(blockingQueue,(LPVOID) &specialPackgeForThreadPool);
+			//@TODO: thread status!= succes
+			timeToSleep = 10;
+//			while(specialPackgeForThreadPool->isEncrypted != TRUE)
+//			{
+//				Sleep(timeToSleep);
+//				timeToSleep += 5;
+//			}
+			status = protocol->SendPackage(protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
 			if (SUCCESS != status)
 			{
 				logger.Warning(&logger, "The server can not send the encrypted package back to client");
+				DestroySpecialPackage(&specialPackgeForThreadPool);
 				goto Exit;
 			}
-			for (unsigned int i = 0; i < packageListSize - 1; i++)
-			{
-				packageList[i] = packageList[i + 1];
-			}
-			packageListSize--;
+			DestroySpecialPackage(&specialPackgeForThreadPool);
 		}
 	}
 
