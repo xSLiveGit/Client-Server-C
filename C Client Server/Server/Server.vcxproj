@@ -146,17 +146,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Globals.c" />
     <ClCompile Include="Logger.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="MyBlockingQueue.c" />
     <ClCompile Include="Protocol.c" />
     <ClCompile Include="Server.c" />
     <ClCompile Include="Status.c" />
+    <ClCompile Include="ThreadPool.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Globals.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="MyBlockingQueue.h" />
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Status.h" />
+    <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

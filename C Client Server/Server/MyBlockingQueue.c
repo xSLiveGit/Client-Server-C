@@ -150,7 +150,7 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 		}
 		else
 		{
-			if(timeToStay < 500)
+			if (timeToStay < 500)
 			{
 				timeToStay += 5;
 			}

@@ -24,14 +24,8 @@
     <ClCompile Include="MyHeap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadPool.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MyPriorityBlockingQueue.h">
       <Filter>Header Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MyBlockingQueue.c">
-      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -44,14 +38,8 @@
     <ClInclude Include="MyHeap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Threadpool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MyPriorityQueue.c">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MyBlockingQueue.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

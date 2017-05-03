@@ -1,19 +1,19 @@
-#include "Threadpool.h"
+#include "ThreadPool.h"
 #include <stdio.h>
 STATUS CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID elementToProcess));
 STATUS DestroyThreadPool(PTHREAD_POOL *threadPool);
-STATUS Start (PTHREAD_POOL threadPool, INT nWorkers);
+STATUS Start(PTHREAD_POOL threadPool, INT nWorkers);
 DWORD WINAPI Worker(LPVOID params);
-STATUS Add (PTHREAD_POOL threadPool, LPVOID value);
+STATUS Add(PTHREAD_POOL threadPool, LPVOID value);
 typedef struct _PARAMS_
 {
 	PMY_BLOCKING_QUEUE pBlockingQueue;
-	STATUS(*ProcessElement)( _In_ LPVOID elementToProcess);
+	STATUS(*ProcessElement)(_In_ LPVOID elementToProcess);
 } PARAMS_THREAD_POOL;
 
 
-STATUS 
-CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)( _In_ LPVOID elementToProcess))
+STATUS
+CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID elementToProcess))
 {
 	STATUS status;
 	PTHREAD_POOL _threadPool;
@@ -21,21 +21,21 @@ CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)( _In_ LPVOID 
 	status = SUCCESS;
 	_threadPool = NULL;
 
-	if(NULL == threadPool)
+	if (NULL == threadPool)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 
 	_threadPool = (PTHREAD_POOL)malloc(sizeof(THREAD_POOL));
-	if(NULL == _threadPool)
+	if (NULL == _threadPool)
 	{
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
 
 	status = CreateMyBlockingQueue(&(_threadPool->queue));
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		free(_threadPool);
 		_threadPool = NULL;
@@ -47,7 +47,7 @@ CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)( _In_ LPVOID 
 	_threadPool->nWorkers = 0;
 	_threadPool->threadsHandle = NULL;
 Exit:
-	if(NULL != threadPool)
+	if (NULL != threadPool)
 	{
 		*threadPool = _threadPool;
 	}
@@ -60,7 +60,7 @@ STATUS Add(PTHREAD_POOL threadPool, LPVOID value)
 
 	status = SUCCESS;
 
-	if(NULL == threadPool)
+	if (NULL == threadPool)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
@@ -81,14 +81,14 @@ DestroyThreadPool(PTHREAD_POOL *threadPool)
 	status = SUCCESS;
 	_threadPool = NULL;
 	tempStatus = SUCCESS;
-	if((NULL == threadPool) || (NULL == *threadPool))
+	if ((NULL == threadPool) || (NULL == *threadPool))
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 
 	_threadPool = *threadPool;
-	for (int i = 0; i < _threadPool->nWorkers;i++)
+	for (int i = 0; i < _threadPool->nWorkers; i++)
 	{
 
 		TerminateThread(_threadPool->threadsHandle[i], tempStatus);
@@ -100,7 +100,7 @@ DestroyThreadPool(PTHREAD_POOL *threadPool)
 	free(_threadPool);
 	_threadPool->threadsHandle = NULL;
 Exit:
-	if(SUCCESS == status)
+	if (SUCCESS == status)
 	{
 		*threadPool = NULL;
 	}
@@ -121,27 +121,27 @@ Start(PTHREAD_POOL threadPool, INT nWorkers)
 	iThread = 0;
 	iThreadErr = 0;
 
-	if(NULL == threadPool)
+	if (NULL == threadPool)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 
 	threadPool->threadsHandle = (HANDLE*)malloc(nWorkers * sizeof(HANDLE));
-	if(NULL == threadPool->threadsHandle)
+	if (NULL == threadPool->threadsHandle)
 	{
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
 	threadPool->nWorkers = nWorkers;
-	
+
 
 	for (iThread = 0; iThread < nWorkers; ++iThread)
 	{
 		params = (PARAMS_THREAD_POOL*)malloc(sizeof(PARAMS_THREAD_POOL));
 		params->pBlockingQueue = threadPool->queue;
 		params->ProcessElement = threadPool->ProcessElement;
-		threadPool->threadsHandle[iThread]  = CreateThread(
+		threadPool->threadsHandle[iThread] = CreateThread(
 			NULL,				// no security attribute 
 			0,					// default stack size 
 			Worker,				// thread proc
@@ -149,17 +149,17 @@ Start(PTHREAD_POOL threadPool, INT nWorkers)
 			0,					// not suspended 
 			NULL				// returns thread ID
 			);
-		if(INVALID_HANDLE_VALUE == threadPool->threadsHandle[iThread])
+		if (INVALID_HANDLE_VALUE == threadPool->threadsHandle[iThread])
 		{
 			for (iThreadErr = 0; iThreadErr < iThread; ++iThreadErr)
 			{
-				TerminateThread(threadPool->threadsHandle[iThreadErr],0);
+				TerminateThread(threadPool->threadsHandle[iThreadErr], 0);
 			}
 			status = THREAD_ERROR;
 			goto Exit;
 		}
 	}
-//	Sleep(100);
+	//	Sleep(100);
 Exit:
 	return status;
 }
@@ -171,17 +171,21 @@ Worker(LPVOID params)
 	PMY_BLOCKING_QUEUE pBlockingQueue;
 	LPVOID value;
 	PARAMS_THREAD_POOL parameter;
-	Sleep(200);
+	
 	status = SUCCESS;
+	value = NULL;
+	pBlockingQueue = NULL;
+
+
 	parameter.pBlockingQueue = ((PARAMS_THREAD_POOL*)params)->pBlockingQueue;
 	parameter.ProcessElement = ((PARAMS_THREAD_POOL*)params)->ProcessElement;
 	pBlockingQueue = parameter.pBlockingQueue;
 	free((PARAMS_THREAD_POOL*)params);
-	printf_s("Pblocking queue este: %p\n",parameter.pBlockingQueue);
-	while(TRUE)
+	printf_s("Pblocking queue este: %p\n", parameter.pBlockingQueue);
+	while (TRUE)
 	{
 		status = pBlockingQueue->Take(pBlockingQueue, &value);
-		if(SUCCESS != status)
+		if (SUCCESS != status)
 		{
 			goto Exit;
 		}

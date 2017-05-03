@@ -1,7 +1,9 @@
 #ifndef _MY_BLOCKING_QUEUE_H_
 #define _MY_BLOCKING_QUEUE_H_
+
 #include <Windows.h>
 #include "Status.h"
+
 typedef struct _Node
 {
 	struct _Node *next;

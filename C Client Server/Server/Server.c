@@ -5,15 +5,15 @@
 #include <string.h>
 #include <strsafe.h>
 #include "../Client/client.h"
+#include "Globals.h"
 
 //	---	Public functions declarations: ---
 STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
-STATUS Start(PSERVER pserver);
+STATUS StartServer(PSERVER pserver);
 STATUS IsValidUser(CHAR* username, CHAR* password);
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
-
 
 //	---	End public functions declarations: ---
 
@@ -23,7 +23,6 @@ DWORD nUsers = 2;
 
 typedef struct {
 	CHAR fileName[100];
-	PLOGGER logger;
 } PARAMS_LOAD;
 
 //	---	Private functions declarations: ---
@@ -56,7 +55,7 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 	{
 		goto Exit;
 	}
-	status = InitializeLogger(&(pserver->logger), loggerOutputFilePath);
+	status = InitializeLogger(&logger, loggerOutputFilePath);
 	if (SUCCESS != status)
 	{
 		goto Exit;
@@ -64,7 +63,7 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName,CHAR* loggerOutputFilePath)
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
-	pserver->Run = &Start;
+	pserver->Run = &StartServer;
 	pserver->flagOptions = 0;
 Exit:
 	return status;
@@ -116,7 +115,7 @@ STATUS RemoveServer(PSERVER pserver)
 	//status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
 	free(pserver->serverProtocol);
 	pserver->serverProtocol = NULL;
-	DestroyLogger(&(pserver->logger));
+	DestroyLogger(&logger);
 	// --- Exit/CleanUp ---
 	return status;
 }
@@ -146,7 +145,7 @@ Exit:
 /**
 *		_IN_			PSERVER			pserver -
 */
-STATUS Start(PSERVER pserver)
+STATUS StartServer(PSERVER pserver)
 {
 	int iThread;
 	STATUS status;
@@ -169,19 +168,19 @@ STATUS Start(PSERVER pserver)
 	iThread = 0;
 	while (TRUE)
 	{
-	Start:
+	StartServer:
 		printf_s("Server start new sesion\n");
-		pserver->logger.Info(&(pserver->logger),"Server start new sesion");
+		logger.Info(&logger,"Server start new sesion");
 		status = SUCCESS;
 		res = TRUE;
 		packetNumbers = 0;
 		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);		
 		if (SUCCESS != status)
 		{
-			pserver->logger.Warning(&(pserver->logger),"Initialize connexion has been failed");
+			logger.Warning(&logger,"Initialize connexion has been failed");
 			goto Exit;
 		}
-		pserver->logger.Info(&(pserver->logger), "Successfully initialize connexion");
+		logger.Info(&logger, "Successfully initialize connexion");
 
 		dwThreadId = 0;
 
@@ -194,10 +193,10 @@ STATUS Start(PSERVER pserver)
 			{
 				response = REJECTED_CONNECTION_RESPONSE;
 				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
-				goto Start;
+				goto StartServer;
 			}
 			clientPipeIndex++;
-			pserver->logger.Info(&(pserver->logger),"Accepted connection by initialize request");
+			logger.Info(&logger,"Accepted connection by initialize request");
 
 			_itoa(clientPipeIndex, tempBuffer, 10);
 			//Create in params.
@@ -209,9 +208,9 @@ STATUS Start(PSERVER pserver)
 			package.size = (DWORD)nr;
 			package.size++;
 			params.fileName[package.size] = '\0';
-			params.logger = &(pserver->logger);
+			
 			hThread[hSize] = CreateThread(
-				pserver->logger.lpSecurityAtributes,              // no security attribute 
+				logger.lpSecurityAtributes,              // no security attribute 
 				0,					// stack size 
 				InstanceThread,    // thread proc
 				(LPVOID)(&params), // thread parameter 
@@ -223,9 +222,9 @@ STATUS Start(PSERVER pserver)
 			{
 				printf_s("CreateThread failed, GLE=%d.\n", GetLastError());
 				response = REJECTED_CONNECTION_RESPONSE;
-				pserver->logger.Warning(&(pserver->logger), "Create thread opertaion failed");
+				logger.Warning(&logger, "Create thread opertaion failed");
 				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
-				goto Start;
+				goto StartServer;
 				return -1;
 			}
 			response = ACCEPTED_CONNECTION_RESPONSE;
@@ -330,7 +329,7 @@ STATUS LoginHandler(PPROTOCOL protocol)
 	status = SUCCESS;
 	username = NULL;
 	password = NULL;
-	printf_s("Start login handler\n");
+	printf_s("StartServer login handler\n");
 	if (NULL == protocol)
 	{
 		status = NULL_POINTER_ERROR;
@@ -396,11 +395,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	PACKAGE packageList[11];
 	DWORD packageListSize;
 	PPROTOCOL protocol;
-	PLOGGER logger;
 	CHAR encryptionKey[100];
 
 	protocol = NULL;
-	logger = NULL;
 	status = SUCCESS;
 	res = TRUE;
 	StringCchCopyA(package.buffer, sizeof(package.buffer), "");
@@ -417,12 +414,11 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 	CreateProtocol(protocol);
-	logger = params.logger;
 	protocol->InitializeConnexion(protocol, params.fileName);
-	logger->Info(logger, "New connetion has been esteblished in thread");
+	logger.Info(&logger, "New connetion has been esteblished in thread");
 	if (!res)
 	{
-		logger->Warning(logger,"Connection error in server thread");
+		logger.Warning(&logger,"Connection error in server thread");
 		printf("Connection error");
 		goto Exit;
 	}
@@ -439,12 +435,12 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		if (LOGIN_REQUEST == request)
 		{
 			printf_s("Is login request\n");
-			logger->Info(logger, "The server has received a login request");
+			logger.Info(&logger, "The server has received a login request");
 			status = LoginHandler(protocol);
 			if ((NULL_POINTER_ERROR == status) || (MALLOC_FAILED_ERROR == status))
 			{
 				response = REJECTED_CONNECTION_RESPONSE;
-				logger->Warning(logger, "Internar error");
+				logger.Warning(&logger, "Internar error");
 				protocol->SendPackage(protocol, &response, sizeof(response));
 				goto Exit;
 			}
@@ -452,23 +448,23 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			protocol->SendPackage(protocol, &response, sizeof(response));
 			if (VALID_USER == status)
 			{
-				logger->Info(logger, "Valid user has been accepted");
+				logger.Info(&logger, "Valid user has been accepted");
 				break;
 			}
 			else
 			{
-				logger->Info(logger, "Invalid user");
+				logger.Info(&logger, "Invalid user");
 			}
 		}
 		else if (FINISH_CONNECTION_REQUEST == request)
 		{
 			printf("Finish connection\n");
-			logger->Info(logger, "Finish connection request");
+			logger.Info(&logger, "Finish connection request");
 			goto Exit;
 		}
 		else
 		{
-			logger->Warning(logger, "WRONG PROTOCOL BEHAVIOR");
+			logger.Warning(&logger, "WRONG PROTOCOL BEHAVIOR");
 			response = WRONG_PROTOCOL_BEHAVIOR_RESPONSE;
 			protocol->SendPackage(protocol, &response, sizeof(response));
 			goto Exit;
@@ -483,28 +479,28 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
 		if (SUCCESS != status)
 		{
-			logger->Warning(logger, "Reading operation FAILED");
+			logger.Warning(&logger, "Reading operation FAILED");
 			goto Exit;
 		}
 		if ((LOGOUT_REQUEST == request) || (FINISH_CONNECTION_REQUEST == request))
 		{
-			logger->Info(logger, "The server has received a logout request");
+			logger.Info(&logger, "The server has received a logout request");
 			goto Exit;
 		}
 		if (ENCRYPTED_MESSAGE_REQUEST == request)
 		{
-			logger->Info(logger, "The server has received an encryption message request");
+			logger.Info(&logger, "The server has received an encryption message request");
 			status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
 			if (SUCCESS != status)
 			{
-				logger->Info(logger, "The server could not read the encryption package");
+				logger.Info(&logger, "The server could not read the encryption package");
 				goto Exit;
 			}
-			logger->Info(logger, "The server read the encryption package");
+			logger.Info(&logger, "The server read the encryption package");
 
 			//@TODO Here we will put the package in a threadpool
 			package.buffer[package.size] = '\0';
-			logger->Info(logger, "Server is trying to encrypt given message.\n");
+			logger.Info(&logger, "Server is trying to encrypt given message.\n");
 			CryptMessage(package.buffer, encryptionKey, package.size);
 			packageList[packageListSize] = package;
 			packageListSize++;
@@ -512,11 +508,11 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		}
 		else if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
 		{
-			logger->Info(logger,"The server has received an encryption request");
+			logger.Info(&logger,"The server has received an encryption request");
 			//@TODO Here we will get the package form the list filled by threadpool process
 			if (nPackagesToSendBack == 0)
 			{
-				logger->Warning(logger, "WRONG PROTOCOL BEHAVIOR. The server has received a encription request.");
+				logger.Warning(&logger, "WRONG PROTOCOL BEHAVIOR. The server has received a encription request.");
 				response = WRONG_PROTOCOL_BEHAVIOR_RESPONSE;
 				protocol->SendPackage(protocol, &response, sizeof(response));
 				goto Exit;
@@ -525,13 +521,13 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			status = protocol->SendPackage(protocol, &response, sizeof(response));
 			if (SUCCESS != status)
 			{
-				logger->Warning(logger, "The server can not send the ok response for encryption request");
+				logger.Warning(&logger, "The server can not send the ok response for encryption request");
 				goto Exit;
 			}
 			status = protocol->SendPackage(protocol, &packageList[0], sizeof(packageList[packageListSize]));
 			if (SUCCESS != status)
 			{
-				logger->Warning(logger, "The server can not send the encrypted package back to client");
+				logger.Warning(&logger, "The server can not send the encrypted package back to client");
 				goto Exit;
 			}
 			for (unsigned int i = 0; i < packageListSize - 1; i++)

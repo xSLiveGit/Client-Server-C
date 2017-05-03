@@ -5,7 +5,7 @@
 #include "../Server/status.h"
 #include "../Server/Protocol.h"
 #include "Logger.h"
-
+#include "Globals.h"
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
 
@@ -23,7 +23,6 @@ typedef struct _SERVER
 	CHAR* pipeName;
 	DWORD flagOptions;
 	DWORD referenceCounter;
-	LOGGER logger;
 }SERVER, *PSERVER;
 
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
