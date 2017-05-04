@@ -64,15 +64,12 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CH
 	unsigned tempBytes;
 	unsigned totalBytesMessage;
 	BOOL res;
-	DWORD totalAlloc;
-
 
 	res = TRUE;
 	length = 0;
 	tempBytes = 0;
 	status = SUCCESS;
 	messageToWrite = NULL;
-	totalAlloc = 0;
 
 	if (NULL == logger || NULL == message)
 	{
@@ -83,10 +80,8 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CH
 	//StringCchLengthA(messageTypeIdentifier, (1 << 31), &tempBytes);
 	totalBytesMessage = strlen(message);
 	tempBytes = strlen(messageTypeIdentifier);
-	totalAlloc = timeBytesSize + tempBytes + totalBytesMessage;
-	printf_s("[INFO] %d bytes allocated\n in logger write generic", totalAlloc);
-	messageToWrite = (CHAR*)malloc(totalAlloc * sizeof(CHAR));
-	
+	messageToWrite = (CHAR*)GlobalAlloc(0, 100 + timeBytesSize * sizeof(CHAR) + tempBytes*sizeof(CHAR) + totalBytesMessage*sizeof(CHAR));
+	totalBytesMessage = timeBytesSize + tempBytes + totalBytesMessage;
 	if (NULL == messageToWrite)
 	{
 		EnterCriticalSection(&(logger->criticalSection));
@@ -107,33 +102,33 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CH
 	res = StringCchCopyA(messageToWrite, totalBytesMessage, tempBuffer);
 	if (!res)
 	{
-		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, messageTypeIdentifier);//Type: day/month/year hour:minute:second:milisecond
 	if (!res)
 	{
-		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, message);
 	if (!res)
 	{
-		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchLengthA(messageToWrite, totalBytesMessage, &length);
 	if (!res)
 	{
-		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, "\n");
 	if (!res)
 	{
-		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	EnterCriticalSection(&(logger->criticalSection));//I prefer an error margin for time rather than blocking the critical section for a long time
 	res = WriteFile(
 		logger->outputFileHandle,		//_In_        HANDLE       hFile,
 		messageToWrite,					//_In_        LPCVOID      lpBuffer,
-		totalAlloc,						//_In_        DWORD        nNumberOfBytesToWrite,
+		length + 1,						//_In_        DWORD        nNumberOfBytesToWrite,
 		NULL,							//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
@@ -144,7 +139,7 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CH
 	}
 
 Exit:
-	free(messageToWrite);
+	GlobalFree(messageToWrite);
 	return status;
 }
 
@@ -178,4 +173,3 @@ STATUS DestroyLogger(PLOGGER plogger)
 Exit:
 	return status;
 }
-

@@ -187,7 +187,7 @@ STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage)
 		goto Exit;
 	}
 	status = DestroyPackage(&((*specialPackage)->package));
-	//	free(*specialPackage);
+	free(*specialPackage);
 	*specialPackage = NULL;
 Exit:
 	return status;
@@ -235,6 +235,8 @@ STATUS RemoveServer(PSERVER pserver)
 
 	// --- Process ---
 	pserver->SetStopFlag(pserver);
+	DestroyThreadPool(&(pserver->threadPool));
+
 	//while (pserver->referenceCounter);
 	//status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
 	free(pserver->serverProtocol);
@@ -373,7 +375,7 @@ STATUS StartServer(PSERVER pserver)
 		}
 		//times--;
 		//if (times == 0)
-		//	break;
+			break;
 	}
 	for (iThread = 0; iThread < hSize; iThread++)
 	{
@@ -707,10 +709,12 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	}
 
 Exit:
+	
 	free(protocol);
 	printf_s("Exit thread\n");
 	FlushFileBuffers(protocol->pipeHandle);
 	DisconnectNamedPipe(protocol->pipeHandle);
+	DestroyBlockingQueue(&blockingQueue);
 	//	CloseHandle(protocol->pipeHandle);
 	printf("InstanceThread exitting.\n");
 	//ExitThread(1);
