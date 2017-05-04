@@ -11,9 +11,14 @@ typedef struct _PARAMS_
 	STATUS(*ProcessElement)(_In_ LPVOID elementToProcess);
 } PARAMS_THREAD_POOL;
 
-
-STATUS
-CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID elementToProcess))
+/**
+* @brief: create threadpool
+* @see: all workers threads will be created here and they will run until you call the destroy function
+* @params:
+*			-	_Inout_		PTHREAD_POOL*	threadPool
+*			-	_In_		STATUS(*ProcessElement)( _In_ LPVOID elementToProcess) - function's will be invoke by worker
+*/
+STATUS CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID elementToProcess))
 {
 	STATUS status;
 	PTHREAD_POOL _threadPool;
@@ -71,6 +76,13 @@ Exit:
 	return status;
 }
 
+/**
+* @brief: destroy threadpool
+* @see: all workers threads will be close at this step
+* @params:
+*			-	_Inout_		PTHREAD_POOL*	threadPool
+*
+*/
 STATUS
 DestroyThreadPool(PTHREAD_POOL *threadPool)
 {

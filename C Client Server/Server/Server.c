@@ -38,6 +38,7 @@ DWORD nUsers = 2;
 typedef struct {
 	CHAR fileName[100];
 	PMY_BLOCKING_QUEUE blockingQueue;
+	PTHREAD_POOL threadPool;
 } PARAMS_LOAD;
 
 STATUS CreatePackage(PPACKAGE *package)
@@ -296,7 +297,7 @@ STATUS StartServer(PSERVER pserver)
 	//int times = 1;
 	iThread = 0;
 
-
+	pserver->threadPool->Start(pserver->threadPool, 3);
 	while (TRUE)
 	{
 	StartServer:
@@ -350,7 +351,7 @@ STATUS StartServer(PSERVER pserver)
 
 			params.fileName[package.size] = '\0';
 			params.blockingQueue = blockingQueue;
-
+			params.threadPool = pserver->threadPool;
 
 			hThread[hSize] = CreateThread(
 				logger.lpSecurityAtributes,              // no security attribute 
@@ -373,9 +374,9 @@ STATUS StartServer(PSERVER pserver)
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &package, sizeof(package));
 		}
-		//times--;
-		//if (times == 0)
-			break;
+//		times--;
+//		if (times == 0)
+//			break;
 	}
 	for (iThread = 0; iThread < hSize; iThread++)
 	{
@@ -471,13 +472,12 @@ STATUS LoginHandler(PPROTOCOL protocol)
 	status = SUCCESS;
 	username = NULL;
 	password = NULL;
-	printf_s("StartServer login handler\n");
 	if (NULL == protocol)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-
+	printf_s("StartServer login handler\n");
 	status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
 	if (SUCCESS != status)
 	{
@@ -541,6 +541,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	PPACKAGE packageForEncrypt;
 	INT timeToSleep;
 	ULONG li, ls;
+	PTHREAD_POOL threadPool;
+
+	threadPool = NULL;
 	timeToSleep = 10;
 	packageForEncrypt = NULL;
 	protocol = NULL;
@@ -557,6 +560,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
  
 	params = *((PARAMS_LOAD*)lpvParam);
 	blockingQueue = params.blockingQueue;
+	threadPool = params.threadPool;
 
 	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
 	if (NULL == protocol)
@@ -668,7 +672,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 			blockingQueue->Add(blockingQueue, (LPVOID)specialPackgeForThreadPool);
 			//			CryptMessage(package.buffer, encryptionKey, package.size);
-
+			threadPool->Add(threadPool, (LPVOID)specialPackgeForThreadPool);
 			nPackagesToSendBack = InterlockedIncrement(&nPackagesToSendBack);
 		}
 		else if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
@@ -692,11 +696,11 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			status = blockingQueue->Take(blockingQueue, (LPVOID)&specialPackgeForThreadPool);
 			//@TODO: thread status!= succes
 			timeToSleep = 10;
-			//			while(specialPackgeForThreadPool->isEncrypted != TRUE)
-			//			{
-			//				Sleep(timeToSleep);
-			//				timeToSleep += 5;
-			//			}
+			while(specialPackgeForThreadPool->isEncrypted != TRUE)
+			{
+				Sleep(timeToSleep);
+				timeToSleep += 5;
+			}
 			status = protocol->SendPackage(protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
 			if (SUCCESS != status)
 			{

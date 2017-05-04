@@ -156,7 +156,7 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 				timeToStay += 5;
 			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
-			printf_s("Am stat odata\n");
+			//printf_s("Am stat odata\n");
 			Sleep(timeToStay);
 		}
 	}
