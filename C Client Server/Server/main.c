@@ -20,11 +20,11 @@ int main()
 	SERVER server;
 	STATUS status = SUCCESS;
 	//PMY_BLOCKING_QUEUE queue;
-	
+
 	//CreateMyBlockingQueue(&queue);
 
-	status =CreateServer(&server, "nume","logger.txt");
-	if(!SUCCESS == status)
+	status = CreateServer(&server, "nume", "logger.txt");
+	if (!SUCCESS == status)
 	{
 		printf_s("FAILED TO INITIALIZE SERVER!!!\n");
 		goto Exit;

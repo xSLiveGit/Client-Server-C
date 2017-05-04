@@ -27,7 +27,7 @@ CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID e
 		goto Exit;
 	}
 
-	_threadPool = (PTHREAD_POOL)GlobalAlloc(0,sizeof(THREAD_POOL));
+	_threadPool = (PTHREAD_POOL)malloc( sizeof(THREAD_POOL));
 	if (NULL == _threadPool)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -37,7 +37,7 @@ CreateThreadPool(PTHREAD_POOL *threadPool, STATUS(*ProcessElement)(_In_ LPVOID e
 	status = CreateMyBlockingQueue(&(_threadPool->queue));
 	if (SUCCESS != status)
 	{
-		GlobalFree(_threadPool);
+		free(_threadPool);
 		_threadPool = NULL;
 		goto Exit;
 	}
@@ -95,9 +95,9 @@ DestroyThreadPool(PTHREAD_POOL *threadPool)
 		_threadPool->threadsHandle[i] = INVALID_HANDLE_VALUE;
 	}
 	DestroyBlockingQueue(&(_threadPool->queue));
-	GlobalFree(_threadPool->threadsHandle);
+	free(_threadPool->threadsHandle);
 	_threadPool->threadsHandle = NULL;
-	GlobalFree(_threadPool);
+	free(_threadPool);
 	_threadPool->threadsHandle = NULL;
 Exit:
 	if (SUCCESS == status)
@@ -127,7 +127,7 @@ Start(PTHREAD_POOL threadPool, INT nWorkers)
 		goto Exit;
 	}
 
-	threadPool->threadsHandle = (HANDLE*)GlobalAlloc(0,nWorkers * sizeof(HANDLE));
+	threadPool->threadsHandle = (HANDLE*)malloc( nWorkers * sizeof(HANDLE));
 	if (NULL == threadPool->threadsHandle)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -138,7 +138,7 @@ Start(PTHREAD_POOL threadPool, INT nWorkers)
 
 	for (iThread = 0; iThread < nWorkers; ++iThread)
 	{
-		params = (PARAMS_THREAD_POOL*)GlobalAlloc(0,sizeof(PARAMS_THREAD_POOL));
+		params = (PARAMS_THREAD_POOL*)malloc( sizeof(PARAMS_THREAD_POOL));
 		params->pBlockingQueue = threadPool->queue;
 		params->ProcessElement = threadPool->ProcessElement;
 		threadPool->threadsHandle[iThread] = CreateThread(
@@ -171,7 +171,7 @@ Worker(LPVOID params)
 	PMY_BLOCKING_QUEUE pBlockingQueue;
 	LPVOID value;
 	PARAMS_THREAD_POOL parameter;
-	
+
 	status = SUCCESS;
 	value = NULL;
 	pBlockingQueue = NULL;
@@ -180,7 +180,7 @@ Worker(LPVOID params)
 	parameter.pBlockingQueue = ((PARAMS_THREAD_POOL*)params)->pBlockingQueue;
 	parameter.ProcessElement = ((PARAMS_THREAD_POOL*)params)->ProcessElement;
 	pBlockingQueue = parameter.pBlockingQueue;
-	GlobalFree((PARAMS_THREAD_POOL*)params);
+	free((PARAMS_THREAD_POOL*)params);
 	printf_s("Pblocking queue este: %p\n", parameter.pBlockingQueue);
 	while (TRUE)
 	{

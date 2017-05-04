@@ -7,22 +7,22 @@
 
 
 STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath);
-STATUS Info (PLOGGER logger, CHAR* message);
-STATUS Warning (PLOGGER logger, CHAR* message);
+STATUS Info(PLOGGER logger, CHAR* message);
+STATUS Warning(PLOGGER logger, CHAR* message);
 STATUS DestroyLogger(PLOGGER plogger);
 
 
 STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath)
 {
 	STATUS status;
-	
+
 	status = SUCCESS;
-	if(NULL == plogger)
+	if (NULL == plogger)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-	
+
 
 	plogger->lpSecurityAtributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
 	plogger->Info = &Info;
@@ -31,7 +31,7 @@ STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath)
 	plogger->lpSecurityAtributes->lpSecurityDescriptor = NULL;
 	plogger->lpSecurityAtributes->nLength = sizeof(*(plogger->lpSecurityAtributes));
 	InitializeCriticalSection(&(plogger->criticalSection));
-	if(NULL == outputFilePath)
+	if (NULL == outputFilePath)
 	{
 		plogger->outputFileHandle = stdout;
 	}
@@ -52,7 +52,7 @@ Exit:
 }
 
 
-STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHAR* message)
+STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CHAR* message)
 {
 	STATUS status;
 	SYSTEMTIME systemtime;
@@ -64,12 +64,15 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 	unsigned tempBytes;
 	unsigned totalBytesMessage;
 	BOOL res;
+	DWORD totalAlloc;
+
 
 	res = TRUE;
 	length = 0;
 	tempBytes = 0;
 	status = SUCCESS;
 	messageToWrite = NULL;
+	totalAlloc = 0;
 
 	if (NULL == logger || NULL == message)
 	{
@@ -80,9 +83,11 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 	//StringCchLengthA(messageTypeIdentifier, (1 << 31), &tempBytes);
 	totalBytesMessage = strlen(message);
 	tempBytes = strlen(messageTypeIdentifier);
-	messageToWrite = (CHAR*)GlobalAlloc(0,100 + timeBytesSize * sizeof(CHAR) + tempBytes*sizeof(CHAR) + totalBytesMessage*sizeof(CHAR));
-	totalBytesMessage = timeBytesSize + tempBytes + totalBytesMessage;
-	if(NULL == messageToWrite)
+	totalAlloc = timeBytesSize + tempBytes + totalBytesMessage;
+	printf_s("[INFO] %d bytes allocated\n in logger write generic", totalAlloc);
+	messageToWrite = (CHAR*)malloc(totalAlloc * sizeof(CHAR));
+	
+	if (NULL == messageToWrite)
 	{
 		EnterCriticalSection(&(logger->criticalSection));
 		WriteFile(
@@ -98,48 +103,48 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier,CHA
 	}
 
 	GetSystemTime(&systemtime);
-	sprintf_s(tempBuffer,sizeof(tempBuffer), " %d/%d/%d %d:%d:%d:%4d ", systemtime.wDay,systemtime.wMonth,systemtime.wYear,systemtime.wHour,systemtime.wMinute,systemtime.wSecond,systemtime.wMilliseconds);
+	sprintf_s(tempBuffer, sizeof(tempBuffer), " %d/%d/%d %d:%d:%d:%4d ", systemtime.wDay, systemtime.wMonth, systemtime.wYear, systemtime.wHour, systemtime.wMinute, systemtime.wSecond, systemtime.wMilliseconds);
 	res = StringCchCopyA(messageToWrite, totalBytesMessage, tempBuffer);
-	if(!res)
+	if (!res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, messageTypeIdentifier);//Type: day/month/year hour:minute:second:milisecond
 	if (!res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, message);
 	if (!res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchLengthA(messageToWrite, totalBytesMessage, &length);
 	if (!res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, "\n");
 	if (!res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;//O EROARE BUNA PANA VAD DE CE CRAPA
 	}
 	EnterCriticalSection(&(logger->criticalSection));//I prefer an error margin for time rather than blocking the critical section for a long time
 	res = WriteFile(
 		logger->outputFileHandle,		//_In_        HANDLE       hFile,
 		messageToWrite,					//_In_        LPCVOID      lpBuffer,
-		length+1,						//_In_        DWORD        nNumberOfBytesToWrite,
+		totalAlloc,						//_In_        DWORD        nNumberOfBytesToWrite,
 		NULL,							//_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
-	);
+		);
 	LeaveCriticalSection(&(logger->criticalSection));
-	if(!res)
+	if (!res)
 	{
 		status = FILE_ERROR;
 	}
 
 Exit:
-	GlobalFree(messageToWrite);
+	free(messageToWrite);
 	return status;
 }
 
@@ -148,7 +153,7 @@ STATUS Info(PLOGGER logger, CHAR* message)
 	return WriteGenericLoggerMessage(logger, "INFO: ", message);
 }
 
-STATUS Warning(PLOGGER logger,CHAR* message)
+STATUS Warning(PLOGGER logger, CHAR* message)
 {
 	return WriteGenericLoggerMessage(logger, "WARNING: ", message);
 }
@@ -159,7 +164,7 @@ STATUS DestroyLogger(PLOGGER plogger)
 
 	status = SUCCESS;
 
-	if(NULL ==  plogger )
+	if (NULL == plogger)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;

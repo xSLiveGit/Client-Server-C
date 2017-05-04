@@ -13,38 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="DataStructure">
-      <UniqueIdentifier>{a513ec9b-ff68-49da-8cee-deeab7f5b9d5}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Protocol.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Status.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Server.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Logger.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThreadPool.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Globals.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MyBlockingQueue.c">
-      <Filter>DataStructure</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Status.h">
+    <ClInclude Include="Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Protocol.h">
@@ -53,17 +27,40 @@
     <ClInclude Include="Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Logger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Globals.h">
+    <ClInclude Include="Status.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MyBlockingQueue.h">
-      <Filter>DataStructure</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Globals.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Logger.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Protocol.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Server.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Status.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadPool.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MyBlockingQueue.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

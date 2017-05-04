@@ -1,7 +1,7 @@
 #ifndef _PROTOCOL_SIDE_H_
 #define _PROTOCOL_SIDE_H_
-#include "../Client/status.h"
 #include <Windows.h>
+#include "Globals.h"
 
 typedef struct
 {
