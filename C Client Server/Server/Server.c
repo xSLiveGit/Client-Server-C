@@ -744,7 +744,8 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	protocol->SendPackage(protocol, &response, sizeof(response));
 
 Exit:
-	
+	free(readerFileName);
+	free(writerFileName);
 	free(protocol);
 	printf_s("Exit thread\n");
 	FlushFileBuffers(protocol->pipeHandle);
@@ -787,7 +788,7 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 	PARAMS_LOAD params;
 	PTHREAD_POOL threadPool;
 	PMY_BLOCKING_QUEUE blockingQueue;
-	PPROTOCOL protocol;
+	PROTOCOL protocol;
 	REQUEST_TYPE request;
 	DWORD nReadedBytes;
 	BOOL res;
@@ -821,23 +822,19 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 	params = *((PARAMS_LOAD*)parameters);
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
-	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
+	
 	StringCchCopyA(encryptionKey, sizeof(encryptionKey), params.encryptionKey);
-	if (NULL == protocol)
-	{
-		status = MALLOC_FAILED_ERROR;
-		goto Exit;
-	}
-	CreateProtocol(protocol);
+
+	CreateProtocol(&protocol);
 	logger.Info(&logger, "Server reader will initialize the connection with");
 	logger.Info(&logger, params.fileName);
-	protocol->InitializeConnexion(protocol, params.fileName);
+	protocol.InitializeConnexion(&protocol, params.fileName);
 	logger.Info(&logger, "Server initialized the conection");
 	(*(params.nEncryptedPackage)) = 0;
 	while(TRUE)
 	{
 		logger.Info(&logger,"Server will read a request");
-		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
+		status = protocol.ReadPackage(&protocol, &request, sizeof(request), &nReadedBytes);
 		logger.Info(&logger, "Server read a request");
 		if (ENCRYPTED_MESSAGE_REQUEST == request)
 		{
@@ -849,7 +846,7 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 			packageForEncrypt->size = 0;
 
 			logger.Info(&logger, "The server has received an encryption message request");
-			status = protocol->ReadPackage(protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
+			status = protocol.ReadPackage(&protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
 			if (SUCCESS != status)
 			{
 				logger.Info(&logger, "The server could not read the encryption package");
@@ -888,7 +885,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 	PARAMS_LOAD params;
 	PTHREAD_POOL threadPool;
 	PMY_BLOCKING_QUEUE blockingQueue;
-	PPROTOCOL protocol;
+	PROTOCOL protocol;
 	REQUEST_TYPE request;
 	DWORD nReadedBytes;
 	BOOL res;
@@ -916,6 +913,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 	nPackagesToSendBack = 0;
 	specialPackgeForThreadPool = NULL;
 
+
 	if (NULL == parameters)
 	{
 		status = NULL_POINTER_ERROR;
@@ -925,24 +923,18 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 	params = *((PARAMS_LOAD*)parameters);
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
-	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
 
-	if (NULL == protocol)
-	{
-		status = MALLOC_FAILED_ERROR;
-		goto Exit;
-	}
 	logger.Info(&logger, "Writer will create the protocol");
-	CreateProtocol(protocol);
+	CreateProtocol(&protocol);
 	logger.Info(&logger, "Writer will initialize the connection");
 
-	protocol->InitializeConnexion(protocol, params.fileName);
+	protocol.InitializeConnexion(&protocol, params.fileName);
 	logger.Info(&logger, "The connection has benn initialized");
 	(*(params.nEncryptedPackage)) = 0;
 	while (1)
 	{
 		logger.Info(&logger, "The writer will read a package");
-		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
+		status = protocol.ReadPackage(&protocol, &request, sizeof(request), &nReadedBytes);
 		if (SUCCESS != status)
 		{
 			logger.Warning(&logger, "Reading operation FAILED");
@@ -964,14 +956,14 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 			logger.Info(&logger, "Taked a package for ennript");
 			//@TODO: thread status!= succes
 			response = OK_RESPONSE;
-			status = protocol->SendPackage(protocol, &response, sizeof(response));
+			status = protocol.SendPackage(&protocol, &response, sizeof(response));
 			if (SUCCESS != status)
 			{
 				logger.Warning(&logger, "The server can not send the ok response for encryption request");
 				goto Exit;
 			}
 			
-			status = protocol->SendPackage(protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
+			status = protocol.SendPackage(&protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
 			(*(params.nEncryptedPackage))++;
 			if (SUCCESS != status)
 			{

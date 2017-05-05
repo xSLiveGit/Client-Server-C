@@ -15,19 +15,28 @@
 #define DBG_NEW new
 #endif
 
-int main(int argc, char** argv)
+STATUS main(int argc, char** argv)
 {
+	STATUS status;
 	CLIENT client;
+	status = SUCCESS;
 
-	CreateClient(&client, "nume");
-	client.OpenConnexion(&client);
-	client.Run(&client, "input.txt", "output.txt","mykey");
-
-	client.RemoveClient(&client);
+	status |= CreateClient(&client, "nume");
+	if(SUCCESS != status)
+	{
+		goto Exit;
+	}
+	status |= client.OpenConnexion(&client);
+	if (SUCCESS != status)
+	{
+		goto Exit;
+	}
+	status |= client.Run(&client, "input.txt", "output.txt","mykey");
+	status |= client.RemoveClient(&client);
 
 	getchar();
 
-
+Exit:
 	_CrtDumpMemoryLeaks();
-	return 0;
+	return status;
 }

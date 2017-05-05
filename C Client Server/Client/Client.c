@@ -146,10 +146,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	printf_s("In client initial thread is: %p\n", pclient->clientProtocol->pipeHandle);
 	totalSize = GetFileSize(inputFileHandle, &totalSize);
 	printf_s("Input file hadnle from main thread has size: %d", totalSize);
-	secutiry_attributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
-	secutiry_attributes->bInheritHandle = TRUE;
-	secutiry_attributes->lpSecurityDescriptor = NULL;
-	secutiry_attributes->nLength = sizeof(secutiry_attributes);
+
 	if(NULL == secutiry_attributes)
 	{
 		status = NULL_POINTER_ERROR;
@@ -577,58 +574,14 @@ Exit:
 	return status;
 }
 
-STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE openedInputFileHandle, DWORD totalBytesSize)
-{
-	STATUS status;
-	DWORD totalPackagesNumber;
-	unsigned int iPackage;
-	DWORD readedBytesNumber;
-	PPACKAGE packageListWrapper;
 
-	if (NULL == packageList || NULL == openedInputFileHandle)
-	{
-		status = NULL_POINTER_ERROR;
-		goto Exit;
-	}
-
-	status = SUCCESS;
-	totalPackagesNumber = totalBytesSize / 4096;
-	if (totalBytesSize % 4096 > 0)
-	{
-		totalPackagesNumber++;
-	}
-	packageListWrapper = (PACKAGE*)malloc(totalPackagesNumber * sizeof(PACKAGE));
-
-	for (iPackage = 0; iPackage < totalPackagesNumber && (SUCCESS == status); iPackage++)
-	{
-		//readedBytesNumber = fread(packageListWrapper[iPackage].buffer, sizeof(char), PACKAGE_SIZE, openedInputFileHandle);
-		ReadFile(
-			openedInputFileHandle,						//	_In_        HANDLE       hFile,
-			packageListWrapper[iPackage].buffer,		//	_Out_       LPVOID       lpBuffer,
-			PACKAGE_SIZE,								//	_In_        DWORD        nNumberOfBytesToRead,
-			&readedBytesNumber,							//	_Out_opt_   LPDWORD      lpNumberOfBytesRead,
-			NULL										//	_Inout_opt_ LPOVERLAPPED lpOverlapped
-			);
-		packageListWrapper[iPackage].size = readedBytesNumber;
-		if (readedBytesNumber != PACKAGE_SIZE && iPackage != (totalPackagesNumber - 1))
-		{
-			status = FILE_ERROR;
-		}
-
-	}
-
-	*packageList = packageListWrapper;
-	*packageListSize = totalPackagesNumber;
-Exit:
-	return status;
-}
 
 
 STATUS WINAPI ReceiverWorker(LPVOID parameter)
 {
 	STATUS status;
 	PARAMS_LOAD params;
-	PPROTOCOL protocol;
+	PROTOCOL protocol;
 	CHAR *filename;
 	size_t universalSize;
 	PACKAGE package;
@@ -648,7 +601,6 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	inputFileSize = 0;
 	filename = NULL;
 	universalSize = 0;
-	protocol = NULL;
 	status = SUCCESS;
 	params.filename[0] = '\0';
 	params.nEncryptedPackages = 0;
@@ -658,13 +610,6 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	res = TRUE;
 
 
-	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
-	if (NULL == protocol)
-	{
-		status = MALLOC_FAILED_ERROR;
-		goto Exit;
-	}
-
 	params = *((PARAMS_LOAD*)parameter);
 	outputFileHadnle = params.openedFileHandle;
 	printf_s("outputfileHandle in receiver worker is: %p", outputFileHadnle);
@@ -672,8 +617,8 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	*nReadedPackages = 0;
 	free((PARAMS_LOAD*)parameter);
 
-	status = CreateProtocol(protocol);
-	if (NULL == protocol)
+	status = CreateProtocol(&protocol);
+	if(SUCCESS != status)
 	{
 		goto Exit;
 	}
@@ -688,23 +633,28 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	StringCchCopyA(filename, universalSize + 2, params.filename);
 
 
-	status = protocol->InitializeConnexion(protocol, filename);
-
+	status = protocol.InitializeConnexion(&protocol, filename);
+	free(filename);
+	filename = NULL;
+	if(SUCCESS != status)
+	{
+		goto Exit;
+	}
 	while(TRUE)
 	{
-		status = protocol->SendPackage(protocol, &request, sizeof(request));
+		status = protocol.SendPackage(&protocol, &request, sizeof(request));
 		if (SUCCESS != status)
 		{
 			goto Exit;
 		}
-		status = protocol->ReadPackage(protocol, &response, sizeof(response), &nReadedBytes);
+		status = protocol.ReadPackage(&protocol, &response, sizeof(response), &nReadedBytes);
 		if (SUCCESS != status || response != OK_RESPONSE)
 		{
 			status = COMUNICATION_ERROR;
 			goto Exit;
 		}
 
-		status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
+		status = protocol.ReadPackage(&protocol, &package, sizeof(package), &nReadedBytes);
 		if (SUCCESS != status)
 		{
 			goto Exit;
@@ -731,8 +681,6 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	}
 
 Exit:
-	free(protocol);
-	free(filename);
 	ExitThread(status);
 }
 
@@ -740,7 +688,7 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 {
 	STATUS status;
 	PARAMS_LOAD params;
-	PPROTOCOL protocol;
+	PROTOCOL protocol;
 	CHAR *filename;
 	size_t universalSize;
 	BOOL res;
@@ -763,28 +711,17 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 	res = TRUE;
 	filename = NULL;
 	universalSize = 0;
-	protocol = NULL;
 	status = SUCCESS;
 	params.filename[0] = '\0';
 	params.nEncryptedPackages = 0;
 
-	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
-	if(NULL == protocol)
-	{
-		status = MALLOC_FAILED_ERROR;
-		goto Exit;
-	}
-
+	
 	params = *((PARAMS_LOAD*)parameter);
 	inputFileHandle = params.openedFileHandle;
 	printf_s("inputFileHadnle in sender worker is: %p", inputFileHandle);
 
 	nEncryptedPackages = params.nEncryptedPackages;
-	status = CreateProtocol(protocol);
-	if (NULL == protocol)
-	{
-		goto Exit;
-	}
+	status = CreateProtocol(&protocol);
 
 	universalSize = strlen(params.filename);
 	filename = (CHAR*)malloc((universalSize + 2)*sizeof(CHAR));
@@ -797,7 +734,8 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 	StringCchCopyA(filename, universalSize + 2, params.filename);
 	free((PARAMS_LOAD*)parameter);
 
-	status = protocol->InitializeConnexion(protocol, filename);
+	status = protocol.InitializeConnexion(&protocol, filename);
+	free(filename);
 	if(SUCCESS != status)
 	{
 		goto Exit;
@@ -827,7 +765,7 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 			goto Exit;
 		}
 		printf_s("Send req %d.\n", iPackage);
-		status = protocol->SendPackage(protocol, &request, sizeof(request));
+		status = protocol.SendPackage(&protocol, &request, sizeof(request));
 
 		if (SUCCESS != status)
 		{
@@ -837,7 +775,7 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 		printf_s("Successfully Send req %d\n", iPackage);
 
 		printf_s("Send pack %d", iPackage);
-		status = protocol->SendPackage(protocol, &package, sizeof(package));
+		status = protocol.SendPackage(&protocol, &package, sizeof(package));
 		if (SUCCESS != status)
 		{
 			printf_s("Unsuccessfully Send pack %d", iPackage);
@@ -848,8 +786,6 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 	}
 Exit:
 	request = FINISH_CONNECTION_REQUEST;
-	status = protocol->SendPackage(protocol, &request, sizeof(request));
-	free(protocol);
-	free(filename);
+	status = protocol.SendPackage(&protocol, &request, sizeof(request));
 	ExitThread(status);
 }
