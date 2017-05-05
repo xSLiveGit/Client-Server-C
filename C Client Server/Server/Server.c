@@ -11,7 +11,7 @@
 STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
-STATUS StartServer(PSERVER pserver,LONG nMaxClients);
+STATUS StartServer(PSERVER pserver,LONG nMaxClients,INT nWorkers);
 STATUS IsValidUser(CHAR* username, CHAR* password);
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
 //	---	End public functions declarations: ---
@@ -285,7 +285,7 @@ Exit:
 /**
 *		_IN_			PSERVER			pserver -
 */
-STATUS StartServer(PSERVER pserver,LONG maxClients)
+STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 {
 	int iThread;
 	STATUS status;
@@ -320,7 +320,7 @@ STATUS StartServer(PSERVER pserver,LONG maxClients)
 	iThread = 0;
 
 	
-	pserver->threadPool->Start(pserver->threadPool, 3);
+	pserver->threadPool->Start(pserver->threadPool, nWorkers);
 	consoleParams.pserver = pserver;
 	consoleComunicationThreadHandle = CreateThread(
 		logger.lpSecurityAtributes,              // no security attribute 
@@ -339,7 +339,7 @@ STATUS StartServer(PSERVER pserver,LONG maxClients)
 		res = TRUE;
 		packetNumbers = 0;
 		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
-		if(pserver->flagOptions & REJECT_CLIENTS_FLAG == REJECT_CLIENTS_FLAG && SUCCESS != status)
+		if((pserver->flagOptions & (REJECT_CLIENTS_FLAG) == (REJECT_CLIENTS_FLAG)) && (SUCCESS != status))
 		{
 			break;
 		}
@@ -414,7 +414,7 @@ STATUS StartServer(PSERVER pserver,LONG maxClients)
 //		times--;
 //		if (times == 0)
 //			break;
-		if (pserver->flagOptions & REJECT_CLIENTS_FLAG == REJECT_CLIENTS_FLAG)
+		if (pserver->flagOptions & (REJECT_CLIENTS_FLAG) == (REJECT_CLIENTS_FLAG))
 		{
 			break;
 		}

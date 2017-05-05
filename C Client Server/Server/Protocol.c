@@ -344,6 +344,11 @@ STATUS WINAPI DisconnectNamedPipeDueTimeout(LPVOID parameters)
 
 	params = NULL;
 	status = SUCCESS;
+	if(NULL == parameters)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
 
 	params = ((TIME_OUT_PARAMS*)parameters);
 	Sleep(5000);
