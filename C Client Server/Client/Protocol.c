@@ -107,6 +107,7 @@ STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName)
 
 		// @TODO must create a while(1) statement 
 		printf_s("In initialize function, the new name is: %s\n", protocol->pipeName);
+		
 		protocol->pipeHandle = CreateFileA(
 			protocol->pipeName, // pipe name 
 			GENERIC_READ | GENERIC_WRITE,

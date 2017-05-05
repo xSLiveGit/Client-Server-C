@@ -9,6 +9,13 @@
 #define PACKAGE_SIZE 4096
 #endif //!PACKAGE_SIZE
 
+typedef struct
+{
+	char filename[100];
+	DWORD *nEncryptedPackages;
+	HANDLE openedFileHandle;
+} PARAMS_LOAD;
+
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
 STATUS Start(PCLIENT pclient, CHAR*, CHAR*,CHAR* encryptionKey);
@@ -18,6 +25,9 @@ STATUS ReadAllEncryptedPackagesAndWriteInTheOutputFile(HANDLE openedOutputFileHa
 STATUS ReadAndSendPackages(HANDLE openedInputFileHandle, DWORD *sendedPackages, DWORD inputFileSize, PCLIENT pclient);
 STATUS LoginHandler(CHAR* username, CHAR* password, PPROTOCOL protocol);
 STATUS CreateClient(PCLIENT pclient, CHAR* pipeName);
+STATUS WINAPI ReceiverWorker(LPVOID parameter);
+STATUS WINAPI SenderWorker(LPVOID parameter);
+
 
 STATUS CreateClient(PCLIENT pclient, CHAR* pipeName)
 {
@@ -68,6 +78,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	// --- Declarations ---
 	STATUS status;
 	char buffer[4096];
+	CHAR newFileName[100];
 	HANDLE inputFileHandle;
 	HANDLE outputFileHandle;
 	DWORD readedBytes;
@@ -77,9 +88,27 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	PACKAGE package;
 	DWORD totalSize;
 	DWORD encrysize;
+	PARAMS_LOAD *params;
+	size_t universalSize;
+	HANDLE sentPackageForEncryptHandle;
+	HANDLE receivePackageForEncryptHandle;
+	STATUS returenedStatusCodeReader;
+	STATUS returnedStatusCodeSender;
+	DWORD nReceivedPackages;
+	DWORD nSentedPackages;
+	LPSECURITY_ATTRIBUTES secutiry_attributes;
 	// --- End declarations ---
 
 	// --- Initializations ---
+	secutiry_attributes = NULL;
+	nReceivedPackages = 0;
+	nSenededPackages = 0;
+	sentPackageForEncryptHandle = INVALID_HANDLE_VALUE;
+	receivePackageForEncryptHandle = INVALID_HANDLE_VALUE;
+	returnedStatusCodeSender = SUCCESS;
+	returenedStatusCodeReader = SUCCESS;
+	universalSize = 0;
+	params = NULL;
 	status = SUCCESS;
 	strcpy(buffer, "");
 	inputFileHandle = NULL;
@@ -92,13 +121,16 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	totalSize = 0;
 	encrysize = 0;
 	// --- End initializations ---
-
+	secutiry_attributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
+	secutiry_attributes->bInheritHandle = TRUE;
+	secutiry_attributes->lpSecurityDescriptor = NULL;
+	secutiry_attributes->nLength = sizeof(SECURITY_ATTRIBUTES);
 	//Open file for processing them 
 	inputFileHandle = CreateFileA(
 		inputFile,				//	_In_     LPCTSTR               lpFileName,
 		GENERIC_READ,			//	_In_     DWORD                 dwDesiredAccess,
 		FILE_SHARE_READ,		//	_In_     DWORD                 dwShareMode,
-		NULL,					//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+		secutiry_attributes,					//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
 		OPEN_EXISTING,			//	_In_     DWORD                 dwCreationDisposition,
 		FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL					//_In_opt_ HANDLE                hTemplateFile
@@ -110,14 +142,24 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		goto Exit;
 	}
 
+	printf_s("inputFileHandle in maine thread is: %p\n", inputFileHandle);
 	printf_s("In client initial thread is: %p\n", pclient->clientProtocol->pipeHandle);
 	totalSize = GetFileSize(inputFileHandle, &totalSize);
-
+	printf_s("Input file hadnle from main thread has size: %d", totalSize);
+	secutiry_attributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
+	secutiry_attributes->bInheritHandle = TRUE;
+	secutiry_attributes->lpSecurityDescriptor = NULL;
+	secutiry_attributes->nLength = sizeof(secutiry_attributes);
+	if(NULL == secutiry_attributes)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
 	outputFileHandle = CreateFileA(
 		outputFile,								//	_In_     LPCTSTR               lpFileName,
 		GENERIC_WRITE,							//	_In_     DWORD                 dwDesiredAccess,
 		0,										//	_In_     DWORD                 dwShareMode,
-		NULL,									//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+		secutiry_attributes,									//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
 		OPEN_ALWAYS,							//	_In_     DWORD                 dwCreationDisposition,
 		FILE_ATTRIBUTE_NORMAL,					//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL									//	_In_opt_ HANDLE                hTemplateFile
@@ -128,6 +170,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		status = FILE_ERROR;
 		goto Exit;
 	}
+	printf_s("outputFileHandle in maine thread is: %p\n", outputFileHandle);
 
 	// --- Process --
 	//status |= pclient->OpenConnexion(pclient);
@@ -155,6 +198,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		printf_s("Client accepted response:\n");
 		pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &package, sizeof(package), &readedBytes);
 		package.buffer[package.size] = '\0';
+		StringCchCopyA(newFileName, sizeof(newFileName), package.buffer);
 		//pclient->clientProtocol->CloseConnexion(pclient->clientProtocol);
 		Sleep(2000);
 		status = pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, package.buffer);
@@ -186,28 +230,97 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	encrysize = (DWORD)strlen(encryptionKey);
 	status = pclient->clientProtocol->SendPackage(pclient->clientProtocol, encryptionKey, encrysize);
 	//Encryption Area
-	printf_s("Try to send package for encrypt them\n");
-	status = ReadAndSendPackages(inputFileHandle, &nSenededPackages, totalSize, pclient);
-	if (SUCCESS != status)
+	
+	params = (PARAMS_LOAD*)malloc(sizeof(PARAMS_LOAD));
+	if(NULL == params)
 	{
-		printf_s("Can't sent.\n");
+		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
-	printf_s("Successfully send packages for encrypt them.\n.Try to receive them and to write in the otput file.\n");
-	
-	status = ReadAllEncryptedPackagesAndWriteInTheOutputFile(outputFileHandle, nSenededPackages, pclient->clientProtocol);
-	if(SUCCESS == status)
+	universalSize = strlen(newFileName) + 3;
+	StringCchCopyA(params->filename, universalSize, newFileName);
+	StringCchCatA(params->filename, universalSize, "R");
+	params->nEncryptedPackages = &nSentedPackages;
+	params->openedFileHandle = inputFileHandle;
+	printf_s("Am deschis sender-ul\n");
+	Sleep(1000);
+	sentPackageForEncryptHandle = CreateThread(
+		NULL,
+		0,
+		SenderWorker,
+		(LPVOID)params,
+		0,
+		&returnedStatusCodeSender
+		);
+	if (NULL == sentPackageForEncryptHandle || INVALID_HANDLE_VALUE == sentPackageForEncryptHandle)
 	{
-		printf_s("Received all encrypted packages and writed them in the outputfile\n");
+		status = THREAD_ERROR;
+		goto Exit;
 	}
-	else
+	printf_s("Am trecut de sender-ul\n");
+
+
+	//Receiver
+	params = (PARAMS_LOAD*)malloc(sizeof(PARAMS_LOAD));
+	if (NULL == params)
 	{
-		printf_s("Rewrite encrypted message error\n");
+		status = MALLOC_FAILED_ERROR;
+		TerminateThread(sentPackageForEncryptHandle, status);
+		goto Exit;
+	}
+	universalSize = strlen(newFileName) + 3;
+	StringCchCopyA(params->filename, universalSize, newFileName);
+	StringCchCatA(params->filename, universalSize, "W");
+	params->nEncryptedPackages = &nReceivedPackages;
+	params->openedFileHandle = outputFileHandle;
+
+	printf_s("Deschide receiver-ul\n");
+	receivePackageForEncryptHandle = CreateThread(
+		NULL,
+		0,
+		ReceiverWorker,
+		(LPVOID)params,
+		0,
+		&returnedStatusCodeSender
+		);
+	printf_s("A trecut de receiver \n");
+
+	if (NULL == sentPackageForEncryptHandle || INVALID_HANDLE_VALUE == sentPackageForEncryptHandle)
+	{
+		status = THREAD_ERROR;
+		TerminateThread(sentPackageForEncryptHandle, status);
+		goto Exit;
 	}
 
+	
+	WaitForSingleObject(sentPackageForEncryptHandle, INFINITE);
+	status = pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &response, sizeof(response), &readedBytes);
+	if (SUCCESS != status)
+	{
+		goto Exit;
+	}
+
+	if (OK_RESPONSE != response)
+	{
+		printf_s("NU e un raspus ok\n");
+		TerminateThread(sentPackageForEncryptHandle, THREAD_ERROR);
+		TerminateThread(receivePackageForEncryptHandle, THREAD_ERROR);
+		printf_s("A problem has been occur during encryption process");
+		goto Exit;
+	}
+	printf_s("Raspuns ok\n");
+	printf_s("Am terminat de astepte dupa sender");
+	while(nSentedPackages != nReceivedPackages)
+	{
+		Sleep(25);
+	}
+	Sleep(100);
+	TerminateThread(receivePackageForEncryptHandle, SUCCESS);
+	//AICI E GATA
+
+
 Exit:
-	request = FINISH_CONNECTION_REQUEST;
-	pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
+	free(secutiry_attributes);
 	if (INVALID_HANDLE_VALUE != inputFileHandle && NULL != inputFileHandle)
 	{
 		CloseHandle(inputFileHandle);
@@ -405,7 +518,6 @@ Exit:
 }
 
 
-
 STATUS ReadAndSendPackages(HANDLE openedInputFileHandle, DWORD *sendedPackages, DWORD inputFileSize, PCLIENT pclient)
 {
 	STATUS status;
@@ -509,4 +621,235 @@ STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE op
 	*packageListSize = totalPackagesNumber;
 Exit:
 	return status;
+}
+
+
+STATUS WINAPI ReceiverWorker(LPVOID parameter)
+{
+	STATUS status;
+	PARAMS_LOAD params;
+	PPROTOCOL protocol;
+	CHAR *filename;
+	size_t universalSize;
+	PACKAGE package;
+	DWORD iPackage;
+	DWORD nReadedBytes;
+	BOOL res;
+	REQUEST_TYPE request;
+	RESPONSE_TYPE response;
+	HANDLE outputFileHadnle;
+	unsigned long inputFileSize;
+	DWORD nPackages;
+	DWORD *nReadedPackages;
+
+	nReadedBytes = 0;
+	nPackages = 0;
+	outputFileHadnle = NULL;
+	inputFileSize = 0;
+	filename = NULL;
+	universalSize = 0;
+	protocol = NULL;
+	status = SUCCESS;
+	params.filename[0] = '\0';
+	params.nEncryptedPackages = 0;
+	request = GET_ENCRYPTED_MESSAGE_REQUEST;
+	status = SUCCESS;
+	package.size = 0;
+	res = TRUE;
+
+
+	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
+	if (NULL == protocol)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+
+	params = *((PARAMS_LOAD*)parameter);
+	outputFileHadnle = params.openedFileHandle;
+	printf_s("outputfileHandle in receiver worker is: %p", outputFileHadnle);
+	nReadedPackages = params.nEncryptedPackages;
+	*nReadedPackages = 0;
+	free((PARAMS_LOAD*)parameter);
+
+	status = CreateProtocol(protocol);
+	if (NULL == protocol)
+	{
+		goto Exit;
+	}
+
+	universalSize = strlen(params.filename);
+	filename = (CHAR*)malloc((universalSize + 2)*sizeof(CHAR));
+	if (NULL == filename)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+	StringCchCopyA(filename, universalSize + 2, params.filename);
+
+
+	status = protocol->InitializeConnexion(protocol, filename);
+
+	while(TRUE)
+	{
+		status = protocol->SendPackage(protocol, &request, sizeof(request));
+		if (SUCCESS != status)
+		{
+			goto Exit;
+		}
+		status = protocol->ReadPackage(protocol, &response, sizeof(response), &nReadedBytes);
+		if (SUCCESS != status || response != OK_RESPONSE)
+		{
+			status = COMUNICATION_ERROR;
+			goto Exit;
+		}
+
+		status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
+		if (SUCCESS != status)
+		{
+			goto Exit;
+		}
+
+		res = WriteFile(
+			outputFileHadnle,					//	_In_        HANDLE       hFile,
+			package.buffer,							//	_In_        LPCVOID      lpBuffer,
+			package.size,							//	_In_        DWORD        nNumberOfBytesToWrite,
+			&nReadedBytes,							//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
+			NULL									//	_Inout_opt_ LPOVERLAPPED lpOverlapped
+			);
+		*nReadedPackages += 1;
+		if (!res)
+		{
+			status = FILE_ERROR;
+			goto Exit;
+		}
+
+		if ((package.size != MAX_BUFFER_SIZE))
+		{
+			goto Exit;
+		}
+	}
+
+Exit:
+	free(protocol);
+	free(filename);
+	ExitThread(status);
+}
+
+STATUS WINAPI SenderWorker(LPVOID parameter)
+{
+	STATUS status;
+	PARAMS_LOAD params;
+	PPROTOCOL protocol;
+	CHAR *filename;
+	size_t universalSize;
+	BOOL res;
+	unsigned long fileSize;
+	DWORD nPackages;
+	DWORD iPackage;
+	HANDLE inputFileHandle;
+	REQUEST_TYPE request;
+	RESPONSE_TYPE response;
+	DWORD nReadedBytes;
+	PACKAGE package;
+	DWORD *nEncryptedPackages;
+
+	nEncryptedPackages = NULL;
+	nReadedBytes = 0;
+	request = ENCRYPTED_MESSAGE_REQUEST;
+	inputFileHandle = NULL;
+	nPackages = 0;
+	fileSize = 0;
+	res = TRUE;
+	filename = NULL;
+	universalSize = 0;
+	protocol = NULL;
+	status = SUCCESS;
+	params.filename[0] = '\0';
+	params.nEncryptedPackages = 0;
+
+	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
+	if(NULL == protocol)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+
+	params = *((PARAMS_LOAD*)parameter);
+	inputFileHandle = params.openedFileHandle;
+	printf_s("inputFileHadnle in sender worker is: %p", inputFileHandle);
+
+	nEncryptedPackages = params.nEncryptedPackages;
+	status = CreateProtocol(protocol);
+	if (NULL == protocol)
+	{
+		goto Exit;
+	}
+
+	universalSize = strlen(params.filename);
+	filename = (CHAR*)malloc((universalSize + 2)*sizeof(CHAR));
+	if(NULL == filename)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+	*nEncryptedPackages = 0;
+	StringCchCopyA(filename, universalSize + 2, params.filename);
+	free((PARAMS_LOAD*)parameter);
+
+	status = protocol->InitializeConnexion(protocol, filename);
+	if(SUCCESS != status)
+	{
+		goto Exit;
+	}
+
+	fileSize = GetFileSize(inputFileHandle,NULL);
+	
+	nPackages = fileSize / PACKAGE_SIZE;
+	if(fileSize % PACKAGE_SIZE)
+	{
+		nPackages++;
+	}
+	printf_s("Size-ul este: %d\n", fileSize);
+	for (iPackage = 0; iPackage < nPackages && (SUCCESS == status); iPackage++)
+	{
+		ReadFile(
+			inputFileHandle,						//	_In_        HANDLE       hFile,
+			package.buffer,								//	_Out_       LPVOID       lpBuffer,
+			PACKAGE_SIZE,								//	_In_        DWORD        nNumberOfBytesToRead,
+			&nReadedBytes,								//	_Out_opt_   LPDWORD      lpNumberOfBytesRead,
+			NULL										//	_Inout_opt_ LPOVERLAPPED lpOverlapped
+			);
+		package.size = nReadedBytes;
+		if (nReadedBytes != MAX_BUFFER_SIZE && iPackage < nPackages - 1)//Except for the last package, all had to be the same dimension
+		{
+			status = FILE_ERROR;
+			goto Exit;
+		}
+		printf_s("Send req %d.\n", iPackage);
+		status = protocol->SendPackage(protocol, &request, sizeof(request));
+
+		if (SUCCESS != status)
+		{
+			printf_s("Unsuccessfully Send req %d\n", iPackage);
+			goto Exit;
+		}
+		printf_s("Successfully Send req %d\n", iPackage);
+
+		printf_s("Send pack %d", iPackage);
+		status = protocol->SendPackage(protocol, &package, sizeof(package));
+		if (SUCCESS != status)
+		{
+			printf_s("Unsuccessfully Send pack %d", iPackage);
+			goto Exit;
+		}
+		printf_s("Successfully Send pack %d", iPackage);
+		*nEncryptedPackages += 1;
+	}
+Exit:
+	request = FINISH_CONNECTION_REQUEST;
+	status = protocol->SendPackage(protocol, &request, sizeof(request));
+	free(protocol);
+	free(filename);
+	ExitThread(status);
 }

@@ -19,6 +19,8 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath)
 
 
 //	---	Private functions declarations: ---
+DWORD WINAPI ServerReaderWorker(LPVOID parameters);
+DWORD WINAPI ServerWriterWorker(LPVOID parameters);
 STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, CHAR* encryptionKey);
 STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage);
 static CHAR globalEncryptionKey[] = "encryptionKey";
@@ -39,6 +41,7 @@ typedef struct {
 	CHAR fileName[100];
 	PMY_BLOCKING_QUEUE blockingQueue;
 	PTHREAD_POOL threadPool;
+	DWORD *nEncryptedPackage;
 } PARAMS_LOAD;
 
 STATUS CreatePackage(PPACKAGE *package)
@@ -286,7 +289,11 @@ STATUS StartServer(PSERVER pserver)
 	RESPONSE_TYPE response;
 	DWORD readedBytes;
 	PMY_BLOCKING_QUEUE blockingQueue;
+	HANDLE readerHandle;
+	HANDLE writerHandle;
 
+	readerHandle = NULL;
+	writerHandle = NULL;
 	blockingQueue = NULL;
 	status = SUCCESS;
 	HANDLE hThread[10];
@@ -542,7 +549,22 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	INT timeToSleep;
 	ULONG li, ls;
 	PTHREAD_POOL threadPool;
+	PARAMS_LOAD serverParamsLoader;
+	PARAMS_LOAD clientParamsLoader;
+	DWORD nWriterPackageProccessed;
+	DWORD nReaderPackageProccessed;
+	CHAR* readerFileName;
+	CHAR* writerFileName;
+	HANDLE readerHandle;
+	HANDLE writerHandle;
+	DWORD readerExitCode;
+	DWORD writerExitCode;
 
+
+	readerExitCode = 0;
+	writerExitCode = 0;
+	readerHandle = NULL;
+	writerHandle = NULL;
 	threadPool = NULL;
 	timeToSleep = 10;
 	packageForEncrypt = NULL;
@@ -554,13 +576,25 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	nReadedBytes = 0;
 	nPackagesToSendBack = 0;
 	specialPackgeForThreadPool = NULL;
-	size_t heapMemory;
-	PROCESS_MEMORY_COUNTERS pmc;
-	PPACKAGE mockPacks;
- 
+	readerFileName = NULL;
+	writerFileName = NULL;
+
 	params = *((PARAMS_LOAD*)lpvParam);
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
+
+	readerFileName = (CHAR*)malloc((strlen(params.fileName) + 3) * sizeof(CHAR));
+	if(NULL == readerFileName)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	writerFileName = (CHAR*)malloc((strlen(params.fileName) + 3) * sizeof(CHAR));
+	if (NULL == writerFileName)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
 
 	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
 	if (NULL == protocol)
@@ -635,82 +669,74 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	protocol->ReadPackage(protocol, &encryptionKey, sizeof(encryptionKey), &nReadedBytes);
 	encryptionKey[nReadedBytes] = '\0';
 
-	while (1)
+	//Here i will create the threads for reader and writer
+	clientParamsLoader.threadPool = threadPool;
+	clientParamsLoader.nEncryptedPackage = &nReaderPackageProccessed;
+	clientParamsLoader.blockingQueue = blockingQueue;
+	StringCchCopyA(clientParamsLoader.fileName, strlen(params.fileName)+3, params.fileName);
+	StringCchCatA(clientParamsLoader.fileName, strlen(params.fileName) + 3, "R");
+	readerHandle = CreateThread(
+		NULL,              // no security attribute 
+		0,						// stack size 
+		ServerReaderWorker,			// thread proc
+		(LPVOID)(&clientParamsLoader),	    // thread parameter 
+		0,						// not suspended 
+		&readerExitCode			// returns thread ID
+		);
+	if(NULL == readerHandle || INVALID_HANDLE_VALUE == readerHandle)
 	{
-		
-		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
-		if (SUCCESS != status)
-		{
-			logger.Warning(&logger, "Reading operation FAILED");
-			goto Exit;
-		}
-		if ((LOGOUT_REQUEST == request) || (FINISH_CONNECTION_REQUEST == request))
-		{
-			logger.Info(&logger, "The server has received a logout request");
-			goto Exit;
-		}
-		if (ENCRYPTED_MESSAGE_REQUEST == request)
-		{
-			//@TODO verify with __try malloc error
-			status = CreatePackage(&packageForEncrypt);
-			status = CreateSpecialPackage(&specialPackgeForThreadPool, encryptionKey);
-			specialPackgeForThreadPool->package = packageForEncrypt;
-			packageForEncrypt->size = 0;
-
-			logger.Info(&logger, "The server has received an encryption message request");
-			status = protocol->ReadPackage(protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
-			if (SUCCESS != status)
-			{
-				logger.Info(&logger, "The server could not read the encryption package");
-				goto Exit;
-			}
-			logger.Info(&logger, "The server read the encryption package");
-
-			//@TODO Here we will put the package in a threadpool
-			packageForEncrypt->buffer[packageForEncrypt->size] = '\0';
-			logger.Info(&logger, "Server is trying to encrypt given message.\n");
-
-			blockingQueue->Add(blockingQueue, (LPVOID)specialPackgeForThreadPool);
-			//			CryptMessage(package.buffer, encryptionKey, package.size);
-			threadPool->Add(threadPool, (LPVOID)specialPackgeForThreadPool);
-			nPackagesToSendBack = InterlockedIncrement(&nPackagesToSendBack);
-		}
-		else if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
-		{
-			logger.Info(&logger, "The server has received an encryption request");
-			//@TODO Here we will get the package form the list filled by threadpool process
-			if (nPackagesToSendBack == 0)
-			{
-				logger.Warning(&logger, "WRONG PROTOCOL BEHAVIOR. The server has received a encription request.");
-				response = WRONG_PROTOCOL_BEHAVIOR_RESPONSE;
-				protocol->SendPackage(protocol, &response, sizeof(response));
-				goto Exit;
-			}
-			response = OK_RESPONSE;
-			status = protocol->SendPackage(protocol, &response, sizeof(response));
-			if (SUCCESS != status)
-			{
-				logger.Warning(&logger, "The server can not send the ok response for encryption request");
-				goto Exit;
-			}
-			status = blockingQueue->Take(blockingQueue, (LPVOID)&specialPackgeForThreadPool);
-			//@TODO: thread status!= succes
-			timeToSleep = 10;
-			while(specialPackgeForThreadPool->isEncrypted != TRUE)
-			{
-				Sleep(timeToSleep);
-				timeToSleep += 5;
-			}
-			status = protocol->SendPackage(protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
-			if (SUCCESS != status)
-			{
-				logger.Warning(&logger, "The server can not send the encrypted package back to client");
-				DestroySpecialPackage(&specialPackgeForThreadPool);
-				goto Exit;
-			}
-			DestroySpecialPackage(&specialPackgeForThreadPool);
-		}
+		status = THREAD_ERROR;
+		goto Exit;
 	}
+
+	serverParamsLoader.threadPool = threadPool;
+	serverParamsLoader.nEncryptedPackage = &nWriterPackageProccessed;
+	serverParamsLoader.blockingQueue = blockingQueue;
+	StringCchCopyA(serverParamsLoader.fileName, strlen(params.fileName) + 3, params.fileName);
+	StringCchCatA(serverParamsLoader.fileName, strlen(params.fileName) + 3, "W");
+	writerHandle = CreateThread(
+		NULL,		// no security attribute 
+		0,								// stack size 
+		ServerWriterWorker,					// thread proc
+		(LPVOID)(&serverParamsLoader),	// thread parameter 
+		0,								// not suspended 
+		&writerExitCode					// returns thread ID
+		);
+	if (NULL == writerHandle || INVALID_HANDLE_VALUE == writerHandle)
+	{
+		status = THREAD_ERROR;
+		response = FAILED_RESPONSE;
+		TerminateThread(readerHandle, THREAD_ERROR);
+		protocol->SendPackage(protocol, &response, sizeof(response));
+		goto Exit;
+	}
+
+	WaitForSingleObject(readerHandle, INFINITE);
+//	if(readerExitCode != SUCCESS)
+//	{
+//		status = THREAD_ERROR;
+//		response = FAILED_RESPONSE;
+//		TerminateThread(readerHandle, THREAD_ERROR);
+//		protocol->SendPackage(protocol, &response, sizeof(response));
+//		goto Exit;
+//	}
+	while(nReaderPackageProccessed != nWriterPackageProccessed)//wait for writer worker to resend encripted message
+	{
+		Sleep(25);
+	}
+	TerminateThread(writerHandle, SUCCESS);
+	
+//	if (writerExitCode != SUCCESS)
+//	{
+//		status = THREAD_ERROR;
+//		response = FAILED_RESPONSE;
+//		TerminateThread(readerHandle, THREAD_ERROR);
+//		protocol->SendPackage(protocol, &response, sizeof(response));
+//		goto Exit;
+//	}
+
+	response = OK_RESPONSE;
+	protocol->SendPackage(protocol, &response, sizeof(response));
 
 Exit:
 	
@@ -749,3 +775,217 @@ STATUS ValidUserStatusToResponse(STATUS loginStatus, RESPONSE_TYPE* response)
 Exit:
 	return status;
 }
+
+DWORD WINAPI ServerReaderWorker(LPVOID parameters)
+{
+	STATUS status;
+	PARAMS_LOAD params;
+	PTHREAD_POOL threadPool;
+	PMY_BLOCKING_QUEUE blockingQueue;
+	PPROTOCOL protocol;
+	REQUEST_TYPE request;
+	DWORD nReadedBytes;
+	BOOL res;
+	PACKAGE package;
+	//@TODO temp for testing
+	CHAR encryptionKey[100];
+	PSPECIAL_PACKAGE specialPackgeForThreadPool;
+	PPACKAGE packageForEncrypt;
+
+	nReadedBytes = 0;
+	blockingQueue = NULL;
+	threadPool = NULL;
+	status = SUCCESS;
+	params.threadPool = NULL;
+	params.blockingQueue = NULL;
+	params.fileName[0] = '\0';
+	packageForEncrypt = NULL;
+	res = TRUE;
+	StringCchCopyA(package.buffer, sizeof(package.buffer), "");
+	StringCchCopyA(package.optBuffer, sizeof(package.optBuffer), "");
+	nReadedBytes = 0;
+	specialPackgeForThreadPool = NULL;
+
+
+	if(NULL == parameters)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	logger.Info(&logger,"Server reader was started");
+	params = *((PARAMS_LOAD*)parameters);
+	blockingQueue = params.blockingQueue;
+	threadPool = params.threadPool;
+	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
+	
+	if (NULL == protocol)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+	CreateProtocol(protocol);
+	logger.Info(&logger, "Server reader will initialize the connection with");
+	logger.Info(&logger, params.fileName);
+	protocol->InitializeConnexion(protocol, params.fileName);
+	logger.Info(&logger, "Server initialized the conection");
+	(*(params.nEncryptedPackage)) = 0;
+	while(TRUE)
+	{
+		logger.Info(&logger,"Server will read a request");
+		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
+		logger.Info(&logger, "Server read a request");
+		if (ENCRYPTED_MESSAGE_REQUEST == request)
+		{
+			logger.Info(&logger, "The readed request is ENCRYPTED_MESSAGE_REQUEST");
+			//@TODO verify with __try malloc error
+			status = CreatePackage(&packageForEncrypt);
+			status = CreateSpecialPackage(&specialPackgeForThreadPool, encryptionKey);
+			specialPackgeForThreadPool->package = packageForEncrypt;
+			packageForEncrypt->size = 0;
+
+			logger.Info(&logger, "The server has received an encryption message request");
+			status = protocol->ReadPackage(protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
+			if (SUCCESS != status)
+			{
+				logger.Info(&logger, "The server could not read the encryption package");
+				goto Exit;
+			}
+			logger.Info(&logger, "The server read the encryption package");
+
+			//@TODO Here we will put the package in a threadpool
+			packageForEncrypt->buffer[packageForEncrypt->size] = '\0';
+			logger.Info(&logger, "Server is trying to encrypt given message.\n");
+
+			blockingQueue->Add(blockingQueue, (LPVOID)specialPackgeForThreadPool);
+			//			CryptMessage(package.buffer, encryptionKey, package.size);
+			threadPool->Add(threadPool, (LPVOID)specialPackgeForThreadPool);
+			(*(params.nEncryptedPackage))++;
+		}
+		else if ((LOGOUT_REQUEST == request) || (FINISH_CONNECTION_REQUEST == request))
+		{
+			logger.Info(&logger, "The server has received a logout request");
+			goto Exit;
+		}
+		else
+		{
+			logger.Warning(&logger, "Wrong behavior at reader level");
+			status = WRONG_BEHAVIOR;
+			goto Exit;
+		}
+	}
+
+Exit:
+	ExitThread(status);
+}
+
+
+DWORD WINAPI ServerWriterWorker(LPVOID parameters)
+{
+	STATUS status;
+	PARAMS_LOAD params;
+	PTHREAD_POOL threadPool;
+	PMY_BLOCKING_QUEUE blockingQueue;
+	PPROTOCOL protocol;
+	REQUEST_TYPE request;
+	DWORD nReadedBytes;
+	BOOL res;
+	PACKAGE package;
+	RESPONSE_TYPE response;
+	LONG nPackagesToSendBack;
+	//@TODO temp for testing
+	PSPECIAL_PACKAGE specialPackgeForThreadPool;
+	PPACKAGE packageForEncrypt;
+	INT timeToSleep;
+
+	nReadedBytes = 0;
+	blockingQueue = NULL;
+	threadPool = NULL;
+	status = SUCCESS;
+	params.threadPool = NULL;
+	params.blockingQueue = NULL;
+	params.fileName[0] = '\0';
+	timeToSleep = 10;
+	packageForEncrypt = NULL;
+	res = TRUE;
+	StringCchCopyA(package.buffer, sizeof(package.buffer), "");
+	StringCchCopyA(package.optBuffer, sizeof(package.optBuffer), "");
+	nReadedBytes = 0;
+	nPackagesToSendBack = 0;
+	specialPackgeForThreadPool = NULL;
+
+	if (NULL == parameters)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	logger.Info(&logger, "Writer has started");
+	params = *((PARAMS_LOAD*)parameters);
+	blockingQueue = params.blockingQueue;
+	threadPool = params.threadPool;
+	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
+
+	if (NULL == protocol)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
+	}
+	logger.Info(&logger, "Writer will create the protocol");
+	CreateProtocol(protocol);
+	logger.Info(&logger, "Writer will initialize the connection");
+
+	protocol->InitializeConnexion(protocol, params.fileName);
+	logger.Info(&logger, "The connection has benn initialized");
+	(*(params.nEncryptedPackage)) = 0;
+	while (1)
+	{
+		logger.Info(&logger, "The writer will read a package");
+		status = protocol->ReadPackage(protocol, &request, sizeof(request), &nReadedBytes);
+		if (SUCCESS != status)
+		{
+			logger.Warning(&logger, "Reading operation FAILED");
+			goto Exit;
+		}
+		logger.Info(&logger,"A package was readed by writer");
+		if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
+		{
+			logger.Info(&logger, "The server has received an encryption request");
+			//@TODO Here we will get the package form the list filled by threadpool process
+			status = blockingQueue->Take(blockingQueue, (LPVOID)&specialPackgeForThreadPool);
+			timeToSleep = 10;
+			logger.Info(&logger, "Will wait fait package encription");
+			while (specialPackgeForThreadPool->isEncrypted != TRUE)
+			{
+				Sleep(timeToSleep);
+				timeToSleep += 5;
+			}
+			logger.Info(&logger, "Taked a package for ennript");
+			//@TODO: thread status!= succes
+			response = OK_RESPONSE;
+			status = protocol->SendPackage(protocol, &response, sizeof(response));
+			if (SUCCESS != status)
+			{
+				logger.Warning(&logger, "The server can not send the ok response for encryption request");
+				goto Exit;
+			}
+			
+			status = protocol->SendPackage(protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
+			(*(params.nEncryptedPackage))++;
+			if (SUCCESS != status)
+			{
+				logger.Warning(&logger, "The server can not send the encrypted package back to client");
+				DestroySpecialPackage(&specialPackgeForThreadPool);
+				goto Exit;
+			}
+			DestroySpecialPackage(&specialPackgeForThreadPool);
+		}
+		else
+		{
+			status = WRONG_BEHAVIOR;
+			goto Exit;
+		}
+	}
+
+Exit:
+	return status;
+}
+

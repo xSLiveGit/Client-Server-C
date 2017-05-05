@@ -101,8 +101,8 @@ STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
 	_blockingQueue->head = NULL;
 	_blockingQueue->tail = NULL;
 	_blockingQueue->size = 0;
-	DeleteCriticalSection(&(_blockingQueue->criticalSection));
-	free(_blockingQueue);
+	//DeleteCriticalSection(&(_blockingQueue->criticalSection));
+	//free(_blockingQueue);
 	_blockingQueue = NULL;
 Exit:
 	*blockingQueue = NULL;
