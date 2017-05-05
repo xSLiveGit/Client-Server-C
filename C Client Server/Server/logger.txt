@@ -1,12 +1,41 @@
- 5/5/2017 10:48:21: 650 INFO: Server start new sesion
- 5/5/2017 10:48:26:  57 INFO: Successfully initialize connexion
- 5/5/2017 10:48:26:  57 INFO: Accepted connection by initialize request
- 5/5/2017 10:48:26:  57 INFO: Server start new sesion
- 5/5/2017 10:48:28:  72 INFO: The server has received a login request
- 5/5/2017 10:48:28:  72 INFO: Valid user has been accepted
- 5/5/2017 10:48:31: 603 INFO: Server reader was started
- 5/5/2017 10:48:31: 603 INFO: Writer has started
- 5/5/2017 10:48:31: 603 INFO: Server reader will initialize the connection with
- 5/5/2017 10:48:31: 603 INFO: Writer will create the protocol
- 5/5/2017 10:48:31: 603 INFO: nume1R
- 5/5/2017 10:48:31: 603 INFO: Writer will initialize the connection
+ 5/5/2017 11:43:26: 130 INFO: Server start new sesion
+ 5/5/2017 11:43:32: 627 INFO: Successfully initialize connexion
+ 5/5/2017 11:43:32: 628 INFO: Accepted connection by initialize request
+ 5/5/2017 11:43:34: 629 INFO: The server has received a login request
+ 5/5/2017 11:43:34: 629 INFO: Valid user has been accepted
+ 5/5/2017 11:43:34: 629 INFO: Server reader was started
+ 5/5/2017 11:43:34: 629 INFO: Server reader will initialize the connection with
+ 5/5/2017 11:43:34: 629 INFO: nume1R
+ 5/5/2017 11:43:34: 629 INFO: Writer has started
+ 5/5/2017 11:43:34: 629 INFO: Writer will create the protocol
+ 5/5/2017 11:43:34: 629 INFO: Writer will initialize the connection
+ 5/5/2017 11:43:35: 630 INFO: Server initialized the conection
+ 5/5/2017 11:43:35: 630 INFO: Server will read a request
+ 5/5/2017 11:43:35: 630 INFO: The connection has benn initialized
+ 5/5/2017 11:43:35: 630 INFO: The writer will read a package
+ 5/5/2017 11:43:35: 630 INFO: A package was readed by writer
+ 5/5/2017 11:43:35: 630 INFO: The server has received an encryption request
+ 5/5/2017 11:43:35: 630 INFO: Server read a request
+ 5/5/2017 11:43:35: 630 INFO: The readed request is ENCRYPTED_MESSAGE_REQUEST
+ 5/5/2017 11:43:35: 630 INFO: The server has received an encryption message request
+ 5/5/2017 11:43:35: 630 INFO: The server read the encryption package
+ 5/5/2017 11:43:35: 630 INFO: Server is trying to encrypt given message.
+
+ 5/5/2017 11:43:35: 630 INFO: Server will read a request
+ 5/5/2017 11:43:35: 630 INFO: Server read a request
+ 5/5/2017 11:43:35: 630 INFO: The readed request is ENCRYPTED_MESSAGE_REQUEST
+ 5/5/2017 11:43:35: 630 INFO: The server has received an encryption message request
+ 5/5/2017 11:43:35: 630 INFO: The server read the encryption package
+ 5/5/2017 11:43:35: 630 INFO: Server is trying to encrypt given message.
+
+ 5/5/2017 11:43:35: 630 INFO: Server will read a request
+ 5/5/2017 11:43:35: 630 INFO: Server read a request
+ 5/5/2017 11:43:35: 630 INFO: The server has received a logout request
+ 5/5/2017 11:43:35: 645 INFO: Will wait fait package encription
+ 5/5/2017 11:43:35: 918 INFO: Taked a package for ennript
+ 5/5/2017 11:43:35: 918 INFO: The writer will read a package
+ 5/5/2017 11:43:35: 918 INFO: A package was readed by writer
+ 5/5/2017 11:43:35: 918 INFO: The server has received an encryption request
+ 5/5/2017 11:43:35: 918 INFO: Will wait fait package encription
+ 5/5/2017 11:43:35: 918 INFO: Taked a package for ennript
+ 5/5/2017 11:43:35: 918 INFO: The writer will read a package

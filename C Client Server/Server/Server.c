@@ -42,6 +42,7 @@ typedef struct {
 	PMY_BLOCKING_QUEUE blockingQueue;
 	PTHREAD_POOL threadPool;
 	DWORD *nEncryptedPackage;
+	CHAR encryptionKey[100];
 } PARAMS_LOAD;
 
 STATUS CreatePackage(PPACKAGE *package)
@@ -168,9 +169,10 @@ STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, CHAR* encryptionKe
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
-
+	_specialPackage->encryptionKey = (CHAR*)malloc((strlen(encryptionKey) + 1) * sizeof(CHAR));
 	_specialPackage->isEncrypted = FALSE;
-	_specialPackage->encryptionKey = encryptionKey;
+	memcpy(_specialPackage->encryptionKey, encryptionKey, strlen(encryptionKey));
+	_specialPackage->encryptionKey[strlen(encryptionKey)] = '\0';
 Exit:
 	if (SUCCESS == status)
 	{
@@ -191,6 +193,7 @@ STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage)
 		goto Exit;
 	}
 	status = DestroyPackage(&((*specialPackage)->package));
+	free((*specialPackage)->encryptionKey);
 	free(*specialPackage);
 	*specialPackage = NULL;
 Exit:
@@ -364,7 +367,7 @@ STATUS StartServer(PSERVER pserver)
 				logger.lpSecurityAtributes,              // no security attribute 
 				0,					// stack size 
 				InstanceThread,    // thread proc
-				(LPVOID)(&params), // thread parameter 
+				(&params), // thread parameter 
 				0,                 // not suspended 
 				&dwThreadId		   // returns thread ID
 				);
@@ -383,7 +386,7 @@ STATUS StartServer(PSERVER pserver)
 		}
 //		times--;
 //		if (times == 0)
-//			break;
+			break;
 	}
 	for (iThread = 0; iThread < hSize; iThread++)
 	{
@@ -675,11 +678,12 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	clientParamsLoader.blockingQueue = blockingQueue;
 	StringCchCopyA(clientParamsLoader.fileName, strlen(params.fileName)+3, params.fileName);
 	StringCchCatA(clientParamsLoader.fileName, strlen(params.fileName) + 3, "R");
+	StringCchCopyA(clientParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
 	readerHandle = CreateThread(
 		NULL,              // no security attribute 
 		0,						// stack size 
 		ServerReaderWorker,			// thread proc
-		(LPVOID)(&clientParamsLoader),	    // thread parameter 
+		(&clientParamsLoader),	    // thread parameter 
 		0,						// not suspended 
 		&readerExitCode			// returns thread ID
 		);
@@ -689,6 +693,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 
+	StringCchCopyA(serverParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
 	serverParamsLoader.threadPool = threadPool;
 	serverParamsLoader.nEncryptedPackage = &nWriterPackageProccessed;
 	serverParamsLoader.blockingQueue = blockingQueue;
@@ -698,7 +703,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		NULL,		// no security attribute 
 		0,								// stack size 
 		ServerWriterWorker,					// thread proc
-		(LPVOID)(&serverParamsLoader),	// thread parameter 
+		(&serverParamsLoader),	// thread parameter 
 		0,								// not suspended 
 		&writerExitCode					// returns thread ID
 		);
@@ -817,7 +822,7 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
 	protocol = (PPROTOCOL)malloc(sizeof(PROTOCOL));
-	
+	StringCchCopyA(encryptionKey, sizeof(encryptionKey), params.encryptionKey);
 	if (NULL == protocol)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -852,13 +857,11 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 			}
 			logger.Info(&logger, "The server read the encryption package");
 
-			//@TODO Here we will put the package in a threadpool
 			packageForEncrypt->buffer[packageForEncrypt->size] = '\0';
 			logger.Info(&logger, "Server is trying to encrypt given message.\n");
-
-			blockingQueue->Add(blockingQueue, (LPVOID)specialPackgeForThreadPool);
+			blockingQueue->Add(blockingQueue, specialPackgeForThreadPool);
 			//			CryptMessage(package.buffer, encryptionKey, package.size);
-			threadPool->Add(threadPool, (LPVOID)specialPackgeForThreadPool);
+			threadPool->Add(threadPool, specialPackgeForThreadPool);
 			(*(params.nEncryptedPackage))++;
 		}
 		else if ((LOGOUT_REQUEST == request) || (FINISH_CONNECTION_REQUEST == request))
@@ -950,7 +953,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 		{
 			logger.Info(&logger, "The server has received an encryption request");
 			//@TODO Here we will get the package form the list filled by threadpool process
-			status = blockingQueue->Take(blockingQueue, (LPVOID)&specialPackgeForThreadPool);
+			status = blockingQueue->Take(blockingQueue, &specialPackgeForThreadPool);
 			timeToSleep = 10;
 			logger.Info(&logger, "Will wait fait package encription");
 			while (specialPackgeForThreadPool->isEncrypted != TRUE)
