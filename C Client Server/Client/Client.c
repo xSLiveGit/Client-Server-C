@@ -18,9 +18,8 @@ typedef struct
 
 STATUS OpenConnexion(PCLIENT pclient);
 STATUS RemoveClient(PCLIENT pclient);
-STATUS Start(PCLIENT pclient, CHAR*, CHAR*,CHAR* encryptionKey);
+STATUS Start(PCLIENT pclient, CHAR*, CHAR*,CHAR* encryptionKey,CHAR* username,CHAR* password);
 STATUS ExportAllMessages(PPACKAGE list, unsigned long size, HANDLE outputFileHandle);
-STATUS ConstructPackage(PPACKAGE *packageList, DWORD *packageListSize, HANDLE openedInputFileHandle, DWORD totalBytesSize);
 STATUS ReadAllEncryptedPackagesAndWriteInTheOutputFile(HANDLE openedOutputFileHandle, DWORD nPackages, PPROTOCOL protocol);
 STATUS ReadAndSendPackages(HANDLE openedInputFileHandle, DWORD *sendedPackages, DWORD inputFileSize, PCLIENT pclient);
 STATUS LoginHandler(CHAR* username, CHAR* password, PPROTOCOL protocol);
@@ -73,7 +72,7 @@ STATUS RemoveClient(PCLIENT pclient)
 	return status;
 }
 
-STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryptionKey)
+STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryptionKey,CHAR* username,CHAR* password)
 {
 	// --- Declarations ---
 	STATUS status;
@@ -125,6 +124,14 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	secutiry_attributes->bInheritHandle = TRUE;
 	secutiry_attributes->lpSecurityDescriptor = NULL;
 	secutiry_attributes->nLength = sizeof(SECURITY_ATTRIBUTES);
+
+	if(NULL == username || NULL == password || NULL == encryptionKey || NULL == inputFile || NULL == outputFile)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+
 	//Open file for processing them 
 	inputFileHandle = CreateFileA(
 		inputFile,				//	_In_     LPCTSTR               lpFileName,
@@ -213,7 +220,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	}
 
 	//Login area
-	status = LoginHandler("Raul", "ParolaRaul", pclient->clientProtocol);
+	status = LoginHandler(username, password, pclient->clientProtocol);
 	if (status != SUCCESS_LOGIN)
 	{
 		request = FINISH_CONNECTION_REQUEST;

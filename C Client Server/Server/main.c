@@ -15,6 +15,8 @@
 #define DBG_NEW new
 #endif
 
+char a[][30] = { {"and"} };
+
 int main()
 {
 	SERVER server;
@@ -29,7 +31,7 @@ int main()
 		printf_s("FAILED TO INITIALIZE SERVER!!!\n");
 		goto Exit;
 	}
-	server.Run(&server);
+	server.Run(&server,1);
 	printf_s("gata\n");
 Exit:
 	server.RemoveServer(&server);

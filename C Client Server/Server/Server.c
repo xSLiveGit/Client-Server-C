@@ -11,7 +11,7 @@
 STATUS OpenConnexion(PSERVER pserver);
 STATUS RemoveServer(PSERVER pserver);
 STATUS SetStopFlag(PSERVER pserver);
-STATUS StartServer(PSERVER pserver);
+STATUS StartServer(PSERVER pserver,LONG nMaxClients);
 STATUS IsValidUser(CHAR* username, CHAR* password);
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
 //	---	End public functions declarations: ---
@@ -31,11 +31,17 @@ STATUS ValidUserStatusToResponse(STATUS status, RESPONSE_TYPE* response);
 STATUS CreatePackage(PPACKAGE *package);
 STATUS DestroyPackage(PPACKAGE *package);
 STATUS EncryptionRoutineForSpecialPackage(LPVOID);
+STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters);
 //  ---	End private functions declarations: ---
 
 CHAR* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
 DWORD nUsers = 2;
 #define BUFSIZE 4096
+
+typedef struct
+{
+	PSERVER pserver;
+} CONSOLE_PARAMS;
 
 typedef struct {
 	CHAR fileName[100];
@@ -43,6 +49,7 @@ typedef struct {
 	PTHREAD_POOL threadPool;
 	DWORD *nEncryptedPackage;
 	CHAR encryptionKey[100];
+	LONG *refCounter;
 } PARAMS_LOAD;
 
 STATUS CreatePackage(PPACKAGE *package)
@@ -278,7 +285,7 @@ Exit:
 /**
 *		_IN_			PSERVER			pserver -
 */
-STATUS StartServer(PSERVER pserver)
+STATUS StartServer(PSERVER pserver,LONG maxClients)
 {
 	int iThread;
 	STATUS status;
@@ -294,7 +301,12 @@ STATUS StartServer(PSERVER pserver)
 	PMY_BLOCKING_QUEUE blockingQueue;
 	HANDLE readerHandle;
 	HANDLE writerHandle;
+	HANDLE consoleComunicationThreadHandle;
+	CONSOLE_PARAMS consoleParams;
+	STATUS consoleCommunicationThread;
 
+	consoleCommunicationThread = SUCCESS;
+	consoleComunicationThreadHandle = NULL;
 	readerHandle = NULL;
 	writerHandle = NULL;
 	blockingQueue = NULL;
@@ -307,7 +319,17 @@ STATUS StartServer(PSERVER pserver)
 	//int times = 1;
 	iThread = 0;
 
+	
 	pserver->threadPool->Start(pserver->threadPool, 3);
+	consoleParams.pserver = pserver;
+	consoleComunicationThreadHandle = CreateThread(
+		logger.lpSecurityAtributes,              // no security attribute 
+		0,							// stack size 
+		ConsoleCommunicationThread,			// thread proc
+		(&consoleParams),	    // thread parameter 
+		0,						// not suspended 
+		&consoleCommunicationThread			// returns thread ID
+		);
 	while (TRUE)
 	{
 	StartServer:
@@ -317,6 +339,10 @@ STATUS StartServer(PSERVER pserver)
 		res = TRUE;
 		packetNumbers = 0;
 		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
+		if(pserver->flagOptions & REJECT_CLIENTS_FLAG == REJECT_CLIENTS_FLAG && SUCCESS != status)
+		{
+			break;
+		}
 		if (SUCCESS != status)
 		{
 			logger.Warning(&logger, "Initialize connexion has been failed");
@@ -331,7 +357,7 @@ STATUS StartServer(PSERVER pserver)
 		if (INITIALIZE_REQUEST == request)
 		{
 			printf_s("INITIAILIZE_REQUEST\n");
-			if (ON_REFUSED_CONNECTION((pserver->flagOptions)))
+			if (ON_REFUSED_CONNECTION((pserver->flagOptions)) || (maxClients == pserver->referenceCounter))
 			{
 				response = REJECTED_CONNECTION_RESPONSE;
 				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
@@ -362,6 +388,7 @@ STATUS StartServer(PSERVER pserver)
 			params.fileName[package.size] = '\0';
 			params.blockingQueue = blockingQueue;
 			params.threadPool = pserver->threadPool;
+			params.refCounter = &pserver->referenceCounter;
 
 			hThread[hSize] = CreateThread(
 				logger.lpSecurityAtributes,              // no security attribute 
@@ -386,7 +413,11 @@ STATUS StartServer(PSERVER pserver)
 		}
 //		times--;
 //		if (times == 0)
+//			break;
+		if (pserver->flagOptions & REJECT_CLIENTS_FLAG == REJECT_CLIENTS_FLAG)
+		{
 			break;
+		}
 	}
 	for (iThread = 0; iThread < hSize; iThread++)
 	{
@@ -395,6 +426,7 @@ STATUS StartServer(PSERVER pserver)
 			WaitForSingleObject(hThread[iThread], INFINITE);
 		}
 	}
+	TerminateThread(consoleComunicationThreadHandle, SUCCESS);
 	printf_s("aici\n");
 Exit:
 	return status;
@@ -562,8 +594,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	HANDLE writerHandle;
 	DWORD readerExitCode;
 	DWORD writerExitCode;
+	LONG *refCounter;
 
-
+	refCounter = NULL;
 	readerExitCode = 0;
 	writerExitCode = 0;
 	readerHandle = NULL;
@@ -585,6 +618,8 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	params = *((PARAMS_LOAD*)lpvParam);
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
+	refCounter = params.refCounter;
+	InterlockedIncrement(refCounter);
 
 	readerFileName = (CHAR*)malloc((strlen(params.fileName) + 3) * sizeof(CHAR));
 	if(NULL == readerFileName)
@@ -614,12 +649,8 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		printf("Connection error");
 		goto Exit;
 	}
-
-	GetCurrentThreadStackLimits(
-		&li,
-		&ls
-		);
-	printf_s("ci = %ul cs = %ul\n", li, ls);
+	
+	
 
 	while (1)//login request
 	{
@@ -744,6 +775,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	protocol->SendPackage(protocol, &response, sizeof(response));
 
 Exit:
+	InterlockedDecrement(refCounter);
 	free(readerFileName);
 	free(writerFileName);
 	free(protocol);
@@ -943,7 +975,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 		logger.Info(&logger,"A package was readed by writer");
 		if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
 		{
-			logger.Info(&logger, "The server has received an encryption request");
+			logger.Info(&logger, "The server has received GET_ENCRYPTED_MESSAGE_REQUEST");
 			//@TODO Here we will get the package form the list filled by threadpool process
 			status = blockingQueue->Take(blockingQueue, &specialPackgeForThreadPool);
 			timeToSleep = 10;
@@ -984,3 +1016,58 @@ Exit:
 	return status;
 }
 
+STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
+{
+	STATUS status;
+	CONSOLE_PARAMS params;
+	PSERVER pserver;
+	CHAR infoString[] = { "You can chose 1 of the next options:\n\t\t1 - Show server info\n\t\t2 - Exit\n" };
+	pserver = NULL;
+	status = SUCCESS;
+	BOOL res;
+	char c;
+	char next;
+
+	next = '\n';
+	res = TRUE;
+	if(NULL == parameters)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	params = *((CONSOLE_PARAMS*)parameters);
+	pserver = params.pserver;
+	while(TRUE)
+	{
+		printf_s("%s", infoString);
+		scanf_s("%c", &c);
+		if(next != '\n')
+		{
+			do
+			{
+				scanf_s("%c", &next);			
+			} while (next == '\0');
+			printf_s("Invalid option. Try again\n");
+		}
+		else if(c == '1')
+		{
+			printf_s("Urmeaza sa afisez informatii\n");
+		}
+		else if(c == '2')
+		{
+			pserver->SetStopFlag(pserver);
+			Sleep(100);//sleep to avoid cancel de the pipe handle while a client request a connection;
+			res = CancelIoEx(pserver->serverProtocol->pipeHandle,NULL);
+			if(!res)
+			{
+				printf_s("Operation failed. You should try again.\n");
+			}
+			//res = CloseHandle(pserver->serverProtocol->pipeHandle);
+			goto Exit;
+		}
+	}
+
+Exit:
+	ExitThread(status);
+}

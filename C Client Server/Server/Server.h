@@ -24,11 +24,11 @@ typedef struct _SERVER
 	STATUS(*RemoveServer)(struct _SERVER* pserver);
 	STATUS(*OpenConnexion)(struct _SERVER* pserver);
 	STATUS(*SetStopFlag)(struct _SERVER* pserver);
-	STATUS(*Run)(struct _SERVER* pserver);
+	STATUS(*Run)(struct _SERVER* pserver,LONG nMaxClients);
 	PPROTOCOL serverProtocol;
 	CHAR* pipeName;
 	DWORD flagOptions;
-	DWORD referenceCounter;
+	LONG referenceCounter;
 	PTHREAD_POOL threadPool;
 }SERVER, *PSERVER;
 

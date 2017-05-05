@@ -7,13 +7,19 @@
 #include <stdio.h>
 #include <strsafe.h>		
 
+typedef struct
+{
+	HANDLE pipeHandle;
+	BOOL closeDueTimeout;
+}TIME_OUT_PARAMS;
+STATUS WINAPI DisconnectNamedPipeDueTimeout(LPVOID parameters);
 STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName);
 STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead, DWORD *nNumberOfBytesReaded);
 void SetPipeHandle(PPROTOCOL protocol, HANDLE pipeHandle);
 HANDLE GetPipeHandle(PPROTOCOL protocol);
 STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS CloseConnexion(PPROTOCOL server);
-STATUS  OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
+STATUS OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend);
 STATUS CreateProtocol(PPROTOCOL protocol)
 {
@@ -49,9 +55,14 @@ STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead
 {
 	BOOL res;
 	STATUS status;
+//	HANDLE timeoutThread;
+//	TIME_OUT_PARAMS timeoutParams;
 
+//	timeoutThread = NULL;
 	status = SUCCESS;
 	res = TRUE;
+//	timeoutParams.pipeHandle = NULL;
+//	timeoutParams.closeDueTimeout = FALSE;
 
 	if (NULL == nNumberOfBytesReaded || NULL == buffer)
 	{
@@ -59,6 +70,14 @@ STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead
 		goto Exit;
 	}
 
+//	timeoutThread = CreateThread(
+//		logger.lpSecurityAtributes,
+//		0,
+//		DisconnectNamedPipeDueTimeout,
+//		&timeoutParams,
+//		0,
+//		NULL
+//		);
 	res = ReadFile(
 		protocol->pipeHandle,		//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
@@ -66,7 +85,12 @@ STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead
 		nNumberOfBytesReaded,			//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-
+//	TerminateThread(timeoutThread, SUCCESS);
+//	if(timeoutParams.closeDueTimeout)
+//	{
+//		status = TIME_OUT;
+//		goto Exit;
+//	}
 	if (!res)
 	{
 		status = COMUNICATION_ERROR;
@@ -111,7 +135,7 @@ STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName)
 			MAX_MESSAGE_BYTES,						//_In_     DWORD                 nOutBufferSize,
 			MAX_MESSAGE_BYTES,						//_In_     DWORD                 nInBufferSize,
 			0,							//_In_     DWORD                 nDefaultTimeOut,
-			NULL						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
+			logger.lpSecurityAtributes						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
 			);
 
 	res = ConnectNamedPipe
@@ -297,9 +321,9 @@ STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend)
 		goto Exit;
 	}
 	res = WriteFile(
-		protocol->pipeHandle,			//	_In_        HANDLE       hFile,
+		protocol->pipeHandle,				//	_In_        HANDLE       hFile,
 		message,							//	_In_        LPCVOID      lpBuffer,
-		nBytesToSend,								//	_In_        DWORD        nNumberOfBytesToWrite,
+		nBytesToSend,						//	_In_        DWORD        nNumberOfBytesToWrite,
 		&readedBytes,						//	_Out_opt_   LPDWORD      lpNumberOfBytesWritten,
 		NULL								//	_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
@@ -309,6 +333,23 @@ STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend)
 		status = CONNECTION_ERROR;
 	}
 
+Exit:
+	return status;
+}
+
+STATUS WINAPI DisconnectNamedPipeDueTimeout(LPVOID parameters)
+{
+	STATUS status;
+	TIME_OUT_PARAMS* params;
+
+	params = NULL;
+	status = SUCCESS;
+
+	params = ((TIME_OUT_PARAMS*)parameters);
+	Sleep(5000);
+
+	params->closeDueTimeout = TRUE;
+	CancelIoEx(params->pipeHandle,NULL);
 Exit:
 	return status;
 }

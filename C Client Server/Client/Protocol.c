@@ -15,6 +15,9 @@ STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS CloseConnexion(PPROTOCOL server);
 STATUS  OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend);
+
+
+
 STATUS CreateProtocol(PPROTOCOL protocol)
 {
 	// --- Declarations ---

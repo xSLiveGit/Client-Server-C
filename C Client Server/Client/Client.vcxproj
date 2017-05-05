@@ -151,11 +151,13 @@
   <ItemGroup>
     <ClCompile Include="Client.c" />
     <ClCompile Include="Main.c" />
+    <ClCompile Include="ParametersLoader.c" />
     <ClCompile Include="Protocol.c" />
     <ClCompile Include="Status.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
+    <ClInclude Include="ParametersLoader.h" />
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="Status.h" />
   </ItemGroup>
