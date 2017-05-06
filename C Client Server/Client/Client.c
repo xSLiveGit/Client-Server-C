@@ -223,10 +223,19 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	status = LoginHandler(username, password, pclient->clientProtocol);
 	if (status != SUCCESS_LOGIN)
 	{
-		request = FINISH_CONNECTION_REQUEST;
-		pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
-		goto Exit;
+		if(USER_ALREADY_CONNECTED == status)
+		{
+			
+		}
+		else
+		{
+			request = FINISH_CONNECTION_REQUEST;
+			pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
+			goto Exit;
+		}
+	
 	}
+	
 	else
 	{
 		printf_s("Successfully login.\n");
@@ -412,6 +421,11 @@ STATUS LoginHandler(CHAR* username, CHAR* password, PPROTOCOL protocol)
 		status = WRONG_CREDENTIALS;
 		goto Exit;
 	}
+	if(ALREADY_CONNECTED_RESPONSE == response)
+	{
+		status = USER_ALREADY_CONNECTED;
+		goto Exit;
+	}
 Exit:
 	printf_s("End login\n");
 	return status;
@@ -592,20 +606,17 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	CHAR *filename;
 	size_t universalSize;
 	PACKAGE package;
-	DWORD iPackage;
 	DWORD nReadedBytes;
 	BOOL res;
 	REQUEST_TYPE request;
 	RESPONSE_TYPE response;
 	HANDLE outputFileHadnle;
-	unsigned long inputFileSize;
 	DWORD nPackages;
 	DWORD *nReadedPackages;
 
 	nReadedBytes = 0;
 	nPackages = 0;
 	outputFileHadnle = NULL;
-	inputFileSize = 0;
 	filename = NULL;
 	universalSize = 0;
 	status = SUCCESS;
@@ -698,13 +709,11 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 	PROTOCOL protocol;
 	CHAR *filename;
 	size_t universalSize;
-	BOOL res;
 	unsigned long fileSize;
 	DWORD nPackages;
 	DWORD iPackage;
 	HANDLE inputFileHandle;
 	REQUEST_TYPE request;
-	RESPONSE_TYPE response;
 	DWORD nReadedBytes;
 	PACKAGE package;
 	DWORD *nEncryptedPackages;
@@ -715,7 +724,6 @@ STATUS WINAPI SenderWorker(LPVOID parameter)
 	inputFileHandle = NULL;
 	nPackages = 0;
 	fileSize = 0;
-	res = TRUE;
 	filename = NULL;
 	universalSize = 0;
 	status = SUCCESS;

@@ -7,6 +7,7 @@
 #include "Logger.h"
 #include "Globals.h"
 #include "ThreadPool.h"
+#include "../DataStructures/DataStructures/DynamicVector.h"
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
 
@@ -19,6 +20,25 @@ typedef struct _SPECIAL_PACKAGE {
 	CHAR* encryptionKey;
 } SPECIAL_PACKAGE, *PSPECIAL_PACKAGE;
 
+typedef enum {ONLINE,OFFLINE} USER_TYPE;
+
+typedef struct
+{
+	CHAR username[100];
+	USER_TYPE type;
+	long nEncryptedBytes;
+} USER_STATE,*PUSER_STATE;
+
+typedef struct {
+	CHAR fileName[100];
+	PMY_BLOCKING_QUEUE blockingQueue;
+	PTHREAD_POOL threadPool;
+	DWORD *nEncryptedPackage;
+	CHAR encryptionKey[100];
+	LONG *refCounter;
+	PDYNAMIC_VECTOR pDynamicVector;
+	long *nEncryptedBytes;
+} PARAMS_LOAD;
 typedef struct _SERVER
 {
 	STATUS(*RemoveServer)(struct _SERVER* pserver);
@@ -30,9 +50,10 @@ typedef struct _SERVER
 	DWORD flagOptions;
 	LONG referenceCounter;
 	PTHREAD_POOL threadPool;
+	PDYNAMIC_VECTOR pdynamicVector;
 }SERVER, *PSERVER;
 
 STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
-
+STATUS InitializeUserState(PUSER_STATE *userState,CHAR* username);
 
 #endif //_SERVER_H_

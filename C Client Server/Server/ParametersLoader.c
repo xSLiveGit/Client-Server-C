@@ -5,8 +5,8 @@
 
 BOOL IsNumber(CHAR* string)
 {
-	size_t size;
-	int index;
+	unsigned size;
+	unsigned index;
 
 	size = strlen(string);
 	for (index = 0; index < size;index++)
@@ -25,7 +25,7 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 	BOOL isPipe;
 	BOOL isLogger;
 	INT iParameter;
-	BOOL res;
+	HRESULT res;
 
 	res = TRUE;
 	status = SUCCESS;
@@ -63,11 +63,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 			isNWorkers = TRUE;
 			*nWorkers = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*nWorkers, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-			//			if (!res)
-			//			{
-			//				status = STRING_ERROR;
-			//				goto Exit;
-			//			}
+			if (res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'n')
 		{
@@ -79,11 +79,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 			isPipe = TRUE;
 			*pipeName = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*pipeName, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-			//			if (!res)
-			//			{
-			//				status = STRING_ERROR;
-			//				goto Exit;
-			//			}
+			if (res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'c')
 		{
@@ -95,11 +95,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 			isNMaxClients = TRUE;
 			*nMaxClients = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*nMaxClients, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-			//			if (!res)
-			//			{
-			//				status = STRING_ERROR;
-			//				goto Exit;
-			//			}
+			if (res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'l')
 		{

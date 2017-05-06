@@ -1,3 +1,4 @@
+
 #ifndef _DYNAMICVECTOR_H_
 #define _DYNAMICVECTOR_H_
 #include "Status.h"
@@ -44,7 +45,8 @@ STATUS VectorRemovePosition(PDYNAMIC_VECTOR, int);
 INVALID_VECTOR_POINTER
 SUCCES
 */
-STATUS VectorRemoveValue(PDYNAMIC_VECTOR v, LPVOID value, BOOL(IsThis)(LPVOID el1, LPVOID el2));
+STATUS VectorRemoveValue(PDYNAMIC_VECTOR v, LPVOID value, BOOL(IsThis)(LPVOID el1, LPVOID el2), STATUS(*DestroyValue)(LPVOID val));
+
 
 STATUS VectorGet(DYNAMIC_VECTOR, int, LPVOID*);
 

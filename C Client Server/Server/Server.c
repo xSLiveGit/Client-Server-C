@@ -19,6 +19,9 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath)
 
 
 //	---	Private functions declarations: ---
+BOOL FindElement(LPVOID item1, LPVOID item2);
+STATUS InitializeUserState(PUSER_STATE *userState, CHAR* username);
+STATUS DestroyUserState(PUSER_STATE* userState);
 DWORD WINAPI ServerReaderWorker(LPVOID parameters);
 DWORD WINAPI ServerWriterWorker(LPVOID parameters);
 STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, CHAR* encryptionKey);
@@ -38,19 +41,7 @@ CHAR* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
 DWORD nUsers = 2;
 #define BUFSIZE 4096
 
-typedef struct
-{
-	PSERVER pserver;
-} CONSOLE_PARAMS;
 
-typedef struct {
-	CHAR fileName[100];
-	PMY_BLOCKING_QUEUE blockingQueue;
-	PTHREAD_POOL threadPool;
-	DWORD *nEncryptedPackage;
-	CHAR encryptionKey[100];
-	LONG *refCounter;
-} PARAMS_LOAD;
 
 STATUS CreatePackage(PPACKAGE *package)
 {
@@ -147,6 +138,19 @@ STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath)
 	}
 
 	status = CreateThreadPool(&pserver->threadPool, &EncryptionRoutineForSpecialPackage);
+	if(SUCCESS != status)
+	{
+		DestroyLogger(&logger);
+		goto Exit;
+	}
+
+	status = VectorCreate(&pserver->pdynamicVector);
+	if(SUCCESS != status)
+	{
+		DestroyLogger(&logger);
+		DestroyThreadPool(&pserver->threadPool);
+		goto Exit;
+	}
 	pserver->OpenConnexion = &OpenConnexion;
 	pserver->RemoveServer = &RemoveServer;
 	pserver->SetStopFlag = &SetStopFlag;
@@ -239,6 +243,25 @@ STATUS OpenConnexion(PSERVER pserver)
 	return status;
 }
 
+STATUS DestroyElement(LPVOID el)
+{
+	STATUS status;
+	PUSER_STATE userState;
+	
+	status = SUCCESS;
+
+	if(NULL == el)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+	userState = (PUSER_STATE)el;
+	DestroyUserState(&userState);
+
+Exit:
+	return status;
+}
+
 STATUS RemoveServer(PSERVER pserver)
 {
 	// --- Declarations ---
@@ -256,6 +279,7 @@ STATUS RemoveServer(PSERVER pserver)
 	free(pserver->serverProtocol);
 	pserver->serverProtocol = NULL;
 	DestroyLogger(&logger);
+	VectorDestroy(&pserver->pdynamicVector,&DestroyElement);
 	// --- Exit/CleanUp ---
 	return status;
 }
@@ -289,8 +313,6 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 {
 	int iThread;
 	STATUS status;
-	BOOL res;
-	int packetNumbers;
 	PACKAGE package;
 	CHAR tempBuffer[20];
 	PARAMS_LOAD params;
@@ -299,16 +321,7 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 	RESPONSE_TYPE response;
 	DWORD readedBytes;
 	PMY_BLOCKING_QUEUE blockingQueue;
-	HANDLE readerHandle;
-	HANDLE writerHandle;
-	HANDLE consoleComunicationThreadHandle;
-	CONSOLE_PARAMS consoleParams;
-	STATUS consoleCommunicationThread;
 
-	consoleCommunicationThread = SUCCESS;
-	consoleComunicationThreadHandle = NULL;
-	readerHandle = NULL;
-	writerHandle = NULL;
 	blockingQueue = NULL;
 	status = SUCCESS;
 	HANDLE hThread[10];
@@ -321,26 +334,16 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 
 	
 	pserver->threadPool->Start(pserver->threadPool, nWorkers);
-	consoleParams.pserver = pserver;
-	consoleComunicationThreadHandle = CreateThread(
-		logger.lpSecurityAtributes,              // no security attribute 
-		0,							// stack size 
-		ConsoleCommunicationThread,			// thread proc
-		(&consoleParams),	    // thread parameter 
-		0,						// not suspended 
-		&consoleCommunicationThread			// returns thread ID
-		);
+	
 	while (TRUE)
 	{
 	StartServer:
 		printf_s("Server start new sesion\n");
 		logger.Info(&logger, "Server start new sesion");
-		status = SUCCESS;
-		res = TRUE;
-		packetNumbers = 0;
 		status = pserver->serverProtocol->InitializeConnexion(pserver->serverProtocol, pserver->pipeName);
-		if((pserver->flagOptions & (REJECT_CLIENTS_FLAG) == (REJECT_CLIENTS_FLAG)) && (SUCCESS != status))
+		if((((pserver->flagOptions) & (REJECT_CLIENTS_FLAG)) == (REJECT_CLIENTS_FLAG)) && (SUCCESS != status))
 		{
+			status = SUCCESS;
 			break;
 		}
 		if (SUCCESS != status)
@@ -388,8 +391,8 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 			params.fileName[package.size] = '\0';
 			params.blockingQueue = blockingQueue;
 			params.threadPool = pserver->threadPool;
-			params.refCounter = &pserver->referenceCounter;
-
+			params.refCounter = &(pserver->referenceCounter);
+			params.pDynamicVector = pserver->pdynamicVector;
 			hThread[hSize] = CreateThread(
 				logger.lpSecurityAtributes,              // no security attribute 
 				0,					// stack size 
@@ -410,11 +413,9 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 			response = ACCEPTED_CONNECTION_RESPONSE;
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
 			pserver->serverProtocol->SendPackage(pserver->serverProtocol, &package, sizeof(package));
+
 		}
-//		times--;
-//		if (times == 0)
-//			break;
-		if (pserver->flagOptions & (REJECT_CLIENTS_FLAG) == (REJECT_CLIENTS_FLAG))
+		if (((pserver->flagOptions) & (REJECT_CLIENTS_FLAG)) == (REJECT_CLIENTS_FLAG))
 		{
 			break;
 		}
@@ -424,9 +425,9 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 		if (NULL != hThread[iThread])
 		{
 			WaitForSingleObject(hThread[iThread], INFINITE);
+			hThread[iThread] = NULL;
 		}
 	}
-	TerminateThread(consoleComunicationThreadHandle, SUCCESS);
 	printf_s("aici\n");
 Exit:
 	return status;
@@ -503,7 +504,7 @@ Exit:
 *			- WRONG_CREDENTIALS - if username or password are wrong
 *
 */
-STATUS LoginHandler(PPROTOCOL protocol)
+STATUS LoginHandler(PPROTOCOL protocol,CHAR* usernameP)
 {
 	STATUS status;
 	PACKAGE package;
@@ -514,7 +515,7 @@ STATUS LoginHandler(PPROTOCOL protocol)
 	status = SUCCESS;
 	username = NULL;
 	password = NULL;
-	if (NULL == protocol)
+	if (NULL == protocol || NULL == usernameP)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
@@ -556,7 +557,7 @@ STATUS LoginHandler(PPROTOCOL protocol)
 	}
 	memcpy(password, package.buffer, package.size);
 	password[package.size] = '\0';
-
+	StringCchCopyA(usernameP, strlen(username), username);
 	status = IsValidUser(username, password);
 
 Exit:
@@ -581,8 +582,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	PMY_BLOCKING_QUEUE blockingQueue;
 	PSPECIAL_PACKAGE specialPackgeForThreadPool;
 	PPACKAGE packageForEncrypt;
-	INT timeToSleep;
-	ULONG li, ls;
 	PTHREAD_POOL threadPool;
 	PARAMS_LOAD serverParamsLoader;
 	PARAMS_LOAD clientParamsLoader;
@@ -595,14 +594,22 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	DWORD readerExitCode;
 	DWORD writerExitCode;
 	LONG *refCounter;
+	PDYNAMIC_VECTOR pDynamicVector;
+	CHAR username[100];
+	INT position;
+	PUSER_STATE userState;
+	PUSER_STATE userStateAux;
 
+	userStateAux = NULL;
+	userState = NULL;
+	position = -1;
+	pDynamicVector = NULL;
 	refCounter = NULL;
 	readerExitCode = 0;
 	writerExitCode = 0;
 	readerHandle = NULL;
 	writerHandle = NULL;
 	threadPool = NULL;
-	timeToSleep = 10;
 	packageForEncrypt = NULL;
 	protocol = NULL;
 	status = SUCCESS;
@@ -619,6 +626,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
 	refCounter = params.refCounter;
+	pDynamicVector = params.pDynamicVector;
 	InterlockedIncrement(refCounter);
 
 	readerFileName = (CHAR*)malloc((strlen(params.fileName) + 3) * sizeof(CHAR));
@@ -665,7 +673,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		{
 			printf_s("Is login request\n");
 			logger.Info(&logger, "The server has received a login request");
-			status = LoginHandler(protocol);
+			status = LoginHandler(protocol,username);
 			if ((NULL_POINTER_ERROR == status) || (MALLOC_FAILED_ERROR == status))
 			{
 				response = REJECTED_CONNECTION_RESPONSE;
@@ -677,6 +685,37 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			protocol->SendPackage(protocol, &response, sizeof(response));
 			if (VALID_USER == status)
 			{
+				status = InitializeUserState(&userState, username);
+				if(SUCCESS != status)
+				{
+					goto Exit;
+				}
+				status = VectorSearch(pDynamicVector, userState, &position, &FindElement);
+				if(SUCCESS == status)//found
+				{
+					DestroyUserState(&userState);
+					userState = NULL;
+					status = VectorGet(*pDynamicVector, position, &userState);
+					if(userState->type == OFFLINE)
+					{
+						userState->type = ONLINE;
+						break;
+					}
+					else
+					{
+						response = ALREADY_CONNECTED_RESPONSE;
+						protocol->SendPackage(protocol, &response, sizeof(response));
+//						goto Exit;
+					}
+				}
+				else if(ELEMENT_NOT_FOUND == status)
+				{
+					VectorAdd(pDynamicVector, userState);
+				}
+				else
+				{
+					goto Exit;
+				}
 				logger.Info(&logger, "Valid user has been accepted");
 				break;
 			}
@@ -728,6 +767,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	serverParamsLoader.threadPool = threadPool;
 	serverParamsLoader.nEncryptedPackage = &nWriterPackageProccessed;
 	serverParamsLoader.blockingQueue = blockingQueue;
+	serverParamsLoader.nEncryptedBytes = &userState->nEncryptedBytes;
 	StringCchCopyA(serverParamsLoader.fileName, strlen(params.fileName) + 3, params.fileName);
 	StringCchCatA(serverParamsLoader.fileName, strlen(params.fileName) + 3, "W");
 	writerHandle = CreateThread(
@@ -748,6 +788,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	}
 
 	WaitForSingleObject(readerHandle, INFINITE);
+//	GetExitCodeThread(readerHandle, &readerExitCode);
 //	if(readerExitCode != SUCCESS)
 //	{
 //		status = THREAD_ERROR;
@@ -773,7 +814,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 	response = OK_RESPONSE;
 	protocol->SendPackage(protocol, &response, sizeof(response));
-
+	userState->type = OFFLINE;
 Exit:
 	InterlockedDecrement(refCounter);
 	free(readerFileName);
@@ -928,7 +969,9 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 	PSPECIAL_PACKAGE specialPackgeForThreadPool;
 	PPACKAGE packageForEncrypt;
 	INT timeToSleep;
+	long *nEncryptedBytes;
 
+	nEncryptedBytes = NULL;
 	nReadedBytes = 0;
 	blockingQueue = NULL;
 	threadPool = NULL;
@@ -955,6 +998,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 	params = *((PARAMS_LOAD*)parameters);
 	blockingQueue = params.blockingQueue;
 	threadPool = params.threadPool;
+	nEncryptedBytes = params.nEncryptedBytes;
 
 	logger.Info(&logger, "Writer will create the protocol");
 	CreateProtocol(&protocol);
@@ -996,6 +1040,7 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 			}
 			
 			status = protocol.SendPackage(&protocol, specialPackgeForThreadPool->package, sizeof(PACKAGE));
+			InterlockedAdd(nEncryptedBytes, specialPackgeForThreadPool->package->size);
 			(*(params.nEncryptedPackage))++;
 			if (SUCCESS != status)
 			{
@@ -1016,58 +1061,95 @@ Exit:
 	return status;
 }
 
-STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
+STATUS InitializeUserState(PUSER_STATE *userState,CHAR *username)
 {
+	HRESULT result;
 	STATUS status;
-	CONSOLE_PARAMS params;
-	PSERVER pserver;
-	CHAR infoString[] = { "You can chose 1 of the next options:\n\t\t1 - Show server info\n\t\t2 - Exit\n" };
-	pserver = NULL;
-	status = SUCCESS;
-	BOOL res;
-	char c;
-	char next;
+	size_t length;
+	PUSER_STATE _userState;
 
-	next = '\n';
-	res = TRUE;
-	if(NULL == parameters)
+	_userState = NULL;
+	length = 0;
+	result = S_OK;
+	status = SUCCESS;
+
+	if(NULL == userState || NULL == username)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
 
-	params = *((CONSOLE_PARAMS*)parameters);
-	pserver = params.pserver;
-	while(TRUE)
+	result = StringCchLengthA(username, 100, &length);
+	if(S_OK != result)
 	{
-		printf_s("%s", infoString);
-		scanf_s("%c", &c);
-		if(next != '\n')
-		{
-			do
-			{
-				scanf_s("%c", &next);			
-			} while (next == '\0');
-			printf_s("Invalid option. Try again\n");
-		}
-		else if(c == '1')
-		{
-			printf_s("Urmeaza sa afisez informatii\n");
-		}
-		else if(c == '2')
-		{
-			pserver->SetStopFlag(pserver);
-			Sleep(100);//sleep to avoid cancel de the pipe handle while a client request a connection;
-			res = CancelIoEx(pserver->serverProtocol->pipeHandle,NULL);
-			if(!res)
-			{
-				printf_s("Operation failed. You should try again.\n");
-			}
-			//res = CloseHandle(pserver->serverProtocol->pipeHandle);
-			goto Exit;
-		}
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	_userState = (PUSER_STATE)malloc(sizeof(USER_STATE));
+	if(NULL == _userState)
+	{
+		status = MALLOC_FAILED_ERROR;
+		goto Exit;
 	}
 
+	result = StringCchCopyA(_userState->username, sizeof(_userState->username), username);
+	if(S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	_userState->nEncryptedBytes = 0;
+	_userState->type = ONLINE;
 Exit:
-	ExitThread(status);
+	if(SUCCESS != status)
+	{
+		free(userState);
+		userState = NULL;
+	}
+	*userState = _userState;
+	return status;
+}
+
+STATUS DestroyUserState(PUSER_STATE* userState)
+{
+	STATUS status;
+
+	status = SUCCESS;
+
+	if(NULL == userState)
+	{
+		status = NULL_POINTER_ERROR;
+		goto Exit;
+	}
+
+	free(*userState);
+	*userState = NULL;
+Exit:
+	return status;
+}
+
+BOOL FindElement(LPVOID item1, LPVOID item2)
+{
+	BOOL res;
+	PUSER_STATE userState1;
+	PUSER_STATE userState2;
+
+	userState1 = (PUSER_STATE)item1;
+	userState2 = (PUSER_STATE)item2;
+	res = TRUE;
+
+	if(NULL == item1 || NULL == item2)
+	{
+		res = FALSE;
+		goto Exit;
+	}
+	
+	if(0 == strcmp(userState1->username,userState2->username))
+	{
+		res = TRUE;
+		goto Exit;
+	}
+	res = FALSE;
+Exit:
+	return res;
 }

@@ -110,6 +110,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ConsoleCommunication.h" />
+    <ClInclude Include="DynamicVector.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MyBlockingQueue.h" />
@@ -120,6 +122,8 @@
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConsoleCommunication.c" />
+    <ClCompile Include="DynamicVector.c" />
     <ClCompile Include="Globals.c" />
     <ClCompile Include="Logger.c" />
     <ClCompile Include="main.c" />

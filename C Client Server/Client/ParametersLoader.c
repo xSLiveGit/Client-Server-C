@@ -23,7 +23,7 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 	BOOL isOutputFile;
 	BOOL isPipe;
 	INT iParameter;
-	BOOL res;
+	HRESULT res;
 
 	res = TRUE;
 	status = SUCCESS;
@@ -64,11 +64,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isInputFile = TRUE;
 			*inputFilePath = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*inputFilePath,strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if(!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'o')
 		{
@@ -80,11 +80,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isOutputFile = TRUE;
 			*outputFilePath = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*outputFilePath, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if (!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'n')
 		{
@@ -96,11 +96,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isPipe = TRUE;
 			*pipeName = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*pipeName, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if (!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if(argv[iParameter][1] == 'u')
 		{
@@ -112,11 +112,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isUsername = TRUE;
 			*username = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*username, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if (!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'p')
 		{
@@ -128,11 +128,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isPassword = TRUE;
 			*password = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*password, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if (!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else if (argv[iParameter][1] == 'k')
 		{
@@ -144,11 +144,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 			isEncryptionKey = TRUE;
 			*encryptionKey = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
 			res = StringCchCopyA(*encryptionKey, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
-//			if (!res)
-//			{
-//				status = STRING_ERROR;
-//				goto Exit;
-//			}
+			if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+			}
 		}
 		else
 		{
@@ -167,11 +167,11 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 	{
 		*outputFilePath = (CHAR*)malloc(strlen(*inputFilePath)*sizeof(CHAR) + 2*sizeof(CHAR));
 		res = StringCchCopyA(*outputFilePath, strlen(*inputFilePath) + 1, *inputFilePath);
-//		if(!res)
-//		{
-//			status = STRING_ERROR;
-//			goto Exit;
-//		}
+		if(res != S_OK)
+			{
+				status = STRING_ERROR;
+				goto Exit;
+		}
 	}
 	if(!isPipe)
 	{

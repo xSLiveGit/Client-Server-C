@@ -44,7 +44,7 @@ CleanUp:
 }
 
 STATUS
-VectorDestroy(PDYNAMIC_VECTOR *v, STATUS(*DestroyValue)(LPVOID val))
+VectorDestroy(PDYNAMIC_VECTOR *v,STATUS(*DestroyValue)(LPVOID val))
 {
 	STATUS statusCode;
 	DYNAMIC_VECTOR* wp;
@@ -59,7 +59,7 @@ VectorDestroy(PDYNAMIC_VECTOR *v, STATUS(*DestroyValue)(LPVOID val))
 	}
 
 	wp = *v;
-
+	
 	if (NULL != wp && wp->v != NULL)
 	{
 		for (index = 0; index < wp->size; index++)
@@ -168,7 +168,7 @@ CleanUp:
 	return statusCode;
 }
 
-STATUS VectorRemoveValue(PDYNAMIC_VECTOR v, LPVOID value,BOOL(IsThis)(LPVOID el1,LPVOID el2))
+STATUS VectorRemoveValue(PDYNAMIC_VECTOR v, LPVOID value, BOOL(IsThis)(LPVOID el1, LPVOID el2),STATUS (*DestroyValue)(LPVOID val))
 {
 	int i, j;
 	STATUS statusCode;
@@ -183,9 +183,10 @@ STATUS VectorRemoveValue(PDYNAMIC_VECTOR v, LPVOID value,BOOL(IsThis)(LPVOID el1
 
 	for (i = 0; i < v->size;)
 	{
-		if (IsThis(v->v[i],value))
+		if (IsThis(v->v[i], value))
 		{
 			statusCode = SUCCESS;
+			DestroyValue(v->v[i]);
 			for (j = i; j < v->size - 1; j++)
 			{
 				v->v[j] = v->v[j + 1];
@@ -232,7 +233,7 @@ STATUS VectorSearch(PDYNAMIC_VECTOR v, LPVOID value, int *position, BOOL(IsThis)
 
 	for (i = 0; i < v->size; i++)
 	{
-		if (IsThis(v->v[i] , value))
+		if (IsThis(v->v[i], value))
 		{
 			*position = i;
 			status = SUCCESS;

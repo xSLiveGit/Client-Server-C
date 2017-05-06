@@ -63,7 +63,7 @@ STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead
 	}
 
 	res = ReadFile(
-		protocol->pipeHandle,		//_In_        HANDLE       hFile,
+		protocol->pipeHandle,			//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
 		nNumberOfBytesToRead,			//_In_        DWORD        nNumberOfBytesToRead,
 		nNumberOfBytesReaded,			//_Out_opt_   LPDWORD      lpNumberOfBytesRead,

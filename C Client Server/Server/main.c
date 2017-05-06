@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <strsafe.h>
 #include "ParametersLoader.h"
-
+#include "ConsoleCommunication.h"
+#include "Globals.h"
 #ifdef _DEBUG
 #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
 // Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the
@@ -57,6 +58,13 @@ int main(int argc,char** argv)
 	CHAR* pipeName;
 	LONG nMaxClientsNumber;
 	LONG nWorkersNumber;
+	CONSOLE_PARAMS consoleParams;
+	HANDLE consoleCommunicationThreadHandle;
+
+	STATUS consoleCommunicationThread;
+	consoleCommunicationThreadHandle = NULL;
+	consoleCommunicationThread = SUCCESS;
+
 	status = SUCCESS;
 	nWorkers = NULL;
 	nMaxClient = NULL;
@@ -79,15 +87,34 @@ int main(int argc,char** argv)
 	}
 	nMaxClientsNumber = atoi(nMaxClient);
 	nWorkersNumber = atoi(nWorkers);
-	server.Run(&server, nMaxClientsNumber, nWorkersNumber);
+	consoleParams.pserver = &server;
+	consoleCommunicationThreadHandle = CreateThread(
+		NULL,              // no security attribute 
+		0,							// stack size 
+		ConsoleCommunicationThread,			// thread proc
+		(&consoleParams),	    // thread parameter 
+		0,						// not suspended 
+		&consoleCommunicationThread			// returns thread ID
+		);
+	if(NULL == consoleCommunicationThreadHandle)
+	{
+		printf("Communication Thread error\n");
+		goto Exit;
+	}
+	status = server.Run(&server, nMaxClientsNumber, nWorkersNumber);
+	if(SUCCESS != status)
+	{
+		printf_s("Rularea nu a avut succes");
+	}
+	WaitForSingleObject(consoleCommunicationThreadHandle,INFINITE);
 	printf_s("gata\n");
+	
 Exit:
 	server.RemoveServer(&server);
 	free(nWorkers);
 	free(nMaxClient);
 	free(pipeName);
 	free(logger);
-	getchar();
 	_CrtDumpMemoryLeaks();
 
 	return 0;
