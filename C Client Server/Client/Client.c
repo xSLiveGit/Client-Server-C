@@ -101,8 +101,7 @@ OpenConnexion
 }
 
 STATUS
-RemoveClient
-(
+RemoveClient(
 	_Inout_ PCLIENT pclient
 )
 {
@@ -114,7 +113,13 @@ RemoveClient
 	return status;
 }
 
-STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryptionKey,CHAR* username,CHAR* password)
+STATUS Start(
+	_In_ PCLIENT pclient, 
+	_In_ CHAR* inputFile, 
+	_In_ CHAR* outputFile,
+	_In_ CHAR* encryptionKey,
+	_In_ CHAR* username,
+	_In_ CHAR* password)
 {
 	STATUS status;
 	char buffer[MAX_BUFFER_SIZE];
@@ -135,7 +140,11 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	DWORD nReceivedPackages;
 	DWORD nSentedPackages;
 	LPSECURITY_ATTRIBUTES secutiry_attributes;
+	HRESULT result;
 
+	result = S_OK;
+	inputFileHandle = INVALID_HANDLE_VALUE;
+	outputFileHandle = INVALID_HANDLE_VALUE;
 	nReceivedPackages = 0;
 	returnedStatusCodeSender = SUCCESS;
 	status = SUCCESS;
@@ -156,7 +165,6 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		goto Exit;
 	}
 
-	//Open file for processing them 
 	inputFileHandle = CreateFileA(
 		inputFile,				//	_In_     LPCTSTR               lpFileName,
 		GENERIC_READ,			//	_In_     DWORD                 dwDesiredAccess,
@@ -166,13 +174,12 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL					//_In_opt_ HANDLE                hTemplateFile
 		);
-	if(NULL == inputFileHandle || INVALID_HANDLE_VALUE == inputFileHandle)
+	if(INVALID_HANDLE_VALUE == inputFileHandle)
 	{
+		printf_s("Invalid input file");
 		status = FILE_ERROR;
-		printf_s("inputFileHandle is invalid");
 		goto Exit;
 	}
-
 	totalSize = GetFileSize(inputFileHandle, &totalSize);
 
 	if(NULL == secutiry_attributes)
@@ -190,9 +197,9 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		NULL									//	_In_opt_ HANDLE                hTemplateFile
 		);
 
-	if (NULL == outputFileHandle || INVALID_HANDLE_VALUE == outputFileHandle)
+	if (INVALID_HANDLE_VALUE == outputFileHandle)
 	{
-
+		printf_s("Invalid output file\n");
 		status = FILE_ERROR;
 		goto Exit;
 	}
@@ -261,6 +268,7 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 	status = pclient->clientProtocol->SendPackage(pclient->clientProtocol, encryptionKey, encrysize);
 	//Encryption Area
 	
+	//Sender
 	params = (PARAMS_LOAD*)malloc(sizeof(PARAMS_LOAD));
 	if(NULL == params)
 	{
@@ -268,11 +276,21 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		goto Exit;
 	}
 	universalSize = strlen(newFileName) + 3;
-	StringCchCopyA(params->filename, universalSize, newFileName);
-	StringCchCatA(params->filename, universalSize, "R");
+	result = StringCchCopyA(params->filename, universalSize, newFileName);
+	if(S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	result = StringCchCatA(params->filename, universalSize, "R");
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
 	params->nEncryptedPackages = &nSentedPackages;
 	params->openedFileHandle = inputFileHandle;
-	Sleep(1000);
+	Sleep(500);//Let server to create the news namedpipes
 	sentPackageForEncryptHandle = CreateThread(
 		NULL,
 		0,
@@ -297,8 +315,18 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		goto Exit;
 	}
 	universalSize = strlen(newFileName) + 3;
-	StringCchCopyA(params->filename, universalSize, newFileName);
-	StringCchCatA(params->filename, universalSize, "W");
+	result = StringCchCopyA(params->filename, universalSize, newFileName);
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	result = StringCchCatA(params->filename, universalSize, "W");
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
 	params->nEncryptedPackages = &nReceivedPackages;
 	params->openedFileHandle = outputFileHandle;
 
@@ -333,13 +361,12 @@ STATUS Start(PCLIENT pclient, CHAR* inputFile, CHAR* outputFile,CHAR* encryption
 		printf_s("A problem has been occur during encryption process");
 		goto Exit;
 	}
-	while(nSentedPackages != nReceivedPackages)
+	while(nSentedPackages != nReceivedPackages)//Receiver must must write as much bytes as bytes was sent by sender
 	{
 		Sleep(25);
 	}
 	Sleep(100);
 	TerminateThread(receivePackageForEncryptHandle, SUCCESS);
-
 
 Exit:
 	free(secutiry_attributes);
@@ -454,11 +481,11 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	REQUEST_TYPE request;
 	RESPONSE_TYPE response;
 	HANDLE outputFileHadnle;
-	DWORD nPackages;
 	DWORD *nReadedPackages;
+	HRESULT result;
 
+	result = S_OK;
 	nReadedBytes = 0;
-	nPackages = 0;
 	outputFileHadnle = NULL;
 	filename = NULL;
 	universalSize = 0;
@@ -469,7 +496,6 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	status = SUCCESS;
 	package.size = 0;
 	res = TRUE;
-
 
 	params = *((PARAMS_LOAD*)parameter);
 	outputFileHadnle = params.openedFileHandle;
@@ -490,8 +516,12 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
-	StringCchCopyA(filename, universalSize + 2, params.filename);
-
+	result = StringCchCopyA(filename, universalSize + 2, params.filename);
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
 
 	status = protocol.InitializeConnexion(&protocol, filename);
 	free(filename);

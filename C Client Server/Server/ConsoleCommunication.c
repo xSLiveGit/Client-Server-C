@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include "DynamicVector.h"
 
-STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
+STATUS WINAPI ConsoleCommunicationThread(
+	_In_ LPVOID parameters)
 {
 	STATUS status;
 	CONSOLE_PARAMS params;
@@ -78,7 +79,7 @@ STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
 		{
 			pserver->SetStopFlag(pserver);
 			printf_s("Dupa stop flag\n");
-			Sleep(100);//sleep to avoid cancel de the pipe handle while a client request a connection;
+			Sleep(100);//sleep to avoid cancel the pipe handle while a client request a connection;
 			printf_s("A dormit.Urmeaza CancelIoEx\n");
 			res = CancelIoEx(pserver->serverProtocol->pipeHandle, NULL);
 			printf_s("A facut canceIoEx");
@@ -86,7 +87,6 @@ STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
 			{
 				printf("Operation failed. You should try again.\n");
 			}
-			//res = CloseHandle(pserver->serverProtocol->pipeHandle);
 			goto Exit;
 		}
 		else

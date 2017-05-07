@@ -7,6 +7,7 @@ typedef struct
 	PSERVER pserver;
 } CONSOLE_PARAMS;
 
-STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters);
+STATUS WINAPI ConsoleCommunicationThread(
+	_In_ LPVOID parameters);
 
 #endif

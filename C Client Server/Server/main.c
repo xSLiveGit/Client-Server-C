@@ -111,6 +111,7 @@ int main(int argc,char** argv)
 	
 Exit:
 	server.RemoveServer(&server);
+	printf_s("Press enter...\n");
 	free(nWorkers);
 	free(nMaxClient);
 	free(pipeName);

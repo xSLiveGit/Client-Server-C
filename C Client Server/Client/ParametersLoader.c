@@ -14,7 +14,15 @@
  * All output parameters will be NULL if something will be wrong
  */
 #define DEFAULT_NAMED_PIPE "numepipe"
-STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** outputFilePath, CHAR** encryptionKey, CHAR **username, CHAR** password, CHAR** pipeName)
+STATUS LoadParameters(
+	_In_ char** argv, 
+	_In_ int argc, 
+	_In_ CHAR** inputFilePath,
+	_In_ CHAR** outputFilePath, 
+	_In_ CHAR** encryptionKey, 
+	_In_ CHAR** username, 
+	_In_ CHAR** password, 
+	_In_ CHAR** pipeName)
 {
 	STATUS status;
 	BOOL isInputFile;
@@ -187,7 +195,7 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 	if(!isEncryptionKey)
 	{
 		*encryptionKey = (CHAR*)malloc(sizeof(DEFAULT_KEY) * sizeof(CHAR) + sizeof(CHAR));
-		res = StringCchCopyA(*pipeName, sizeof(DEFAULT_KEY) + 1, DEFAULT_KEY);
+		res = StringCchCopyA(*encryptionKey, sizeof(DEFAULT_KEY) + 1, DEFAULT_KEY);
 		if (res != S_OK)
 		{
 			status = STRING_ERROR;

@@ -34,8 +34,8 @@ void ThreatError(STATUS status)
 				"\t\t-i=\"val\" where val is input file path\n"
 				"\t\t-u=\"val\" where val us username\n"
 				"\t\t-p=\"val\" where val is password\n"
-				"\t\t-k=\"val\" where val is encryption key\n"
 				"\tOptional argument :\n"
+				"\t\t-k=\"val\" where val is encryption key\n"
 				"\t\t-o=\"val\" where val is output file path\n"
 				"\t\t-n=\"val\" where val is pipe name\n"
 			"Obs: arguments must be by next form: -k=val\n"
@@ -169,11 +169,11 @@ STATUS main(int argc, char** argv)
 		CloseHandle(outputFileHandle);
 		res = DeleteFile(auxFile);
 	}
-	status |= client.RemoveClient(&client);
-
-	getchar();
-
+	
 Exit:
+	status |= client.RemoveClient(&client);
+	printf_s("Press enter...\n");
+	getchar();
 	free(inputFilePath);
 	free(outputFilePath);
 	free(encryptionKey);

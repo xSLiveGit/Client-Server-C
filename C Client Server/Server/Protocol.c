@@ -18,7 +18,6 @@ STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName);
 STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead, DWORD *nNumberOfBytesReaded);
 void SetPipeHandle(PPROTOCOL protocol, HANDLE pipeHandle);
 HANDLE GetPipeHandle(PPROTOCOL protocol);
-STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS CloseConnexion(PPROTOCOL server);
 STATUS OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend);
@@ -226,7 +225,11 @@ STATUS CloseConnexion(_Inout_ PPROTOCOL server)
 */
 
 STATUS
-SendPackage(_In_ PPROTOCOL protocol,_In_ LPVOID message,_In_ DWORD nBytesToSend)
+SendPackage(
+	_In_ PPROTOCOL protocol,
+	_In_ LPVOID message,
+	_In_ DWORD nBytesToSend
+	)
 {
 	STATUS status;
 	BOOL res;

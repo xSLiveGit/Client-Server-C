@@ -405,7 +405,6 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 			hSize++;
 			if (hThread == NULL)
 			{
-				printf_s("CreateThread failed, GLE=%d.\n", GetLastError());
 				response = REJECTED_CONNECTION_RESPONSE;
 				logger.Warning(&logger, "Create thread opertaion failed");
 				pserver->serverProtocol->SendPackage(pserver->serverProtocol, &response, sizeof(response));
@@ -429,7 +428,6 @@ STATUS StartServer(PSERVER pserver,LONG maxClients,INT nWorkers)
 			hThread[iThread] = NULL;
 		}
 	}
-	printf_s("aici\n");
 Exit:
 	return status;
 }
@@ -521,20 +519,19 @@ STATUS LoginHandler(PPROTOCOL protocol,CHAR* usernameP)
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-	printf_s("StartServer login handler\n");
 	status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
 	if (SUCCESS != status)
 	{
-		printf_s("Readed username failed\n");
+		logger.Warning(&logger,"Failed to read username");
 		goto Exit;
 	}
-	printf_s("Readed username successfully\n");
 
 	username = (CHAR*)malloc(package.size * sizeof(CHAR) + sizeof(CHAR));//last byte is for '\0'
 	if (NULL == username)
 	{
 		status = MALLOC_FAILED_ERROR;
 		printf("Malloc error\n");
+		logger.Warning(&logger,"Malloc error");
 		goto Exit;
 	}
 	memcpy(username, package.buffer, package.size);
@@ -543,8 +540,8 @@ STATUS LoginHandler(PPROTOCOL protocol,CHAR* usernameP)
 	status = protocol->ReadPackage(protocol, &package, sizeof(package), &nReadedBytes);
 	if (SUCCESS != status)
 	{
-		printf_s("Readed password failed\n");
-
+		logger.Warning(&logger, "Read password failed\n");
+		printf_s("Read password failed\n");
 		goto Exit;
 	}
 	printf_s("Readed password successfully\n");

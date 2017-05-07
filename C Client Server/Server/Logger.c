@@ -6,13 +6,25 @@
 
 
 
-STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath);
-STATUS Info(PLOGGER logger, CHAR* message);
-STATUS Warning(PLOGGER logger, CHAR* message);
-STATUS DestroyLogger(PLOGGER plogger);
+STATUS InitializeLogger(
+	_Inout_ PLOGGER plogger, 
+	_In_ CHAR* outputFilePath);
+
+STATUS Info(
+	_In_ PLOGGER logger, 
+	_In_ CHAR* message);
+
+STATUS Warning(
+	_In_ PLOGGER logger,
+	_In_ CHAR* message);
+
+STATUS DestroyLogger(
+	_Inout_ PLOGGER plogger);
 
 
-STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath)
+STATUS InitializeLogger(
+	_Inout_ PLOGGER plogger,
+	_In_ CHAR* outputFilePath)
 {
 	STATUS status;
 
@@ -22,7 +34,6 @@ STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath)
 		status = NULL_POINTER_ERROR;
 		goto Exit;
 	}
-
 
 	plogger->lpSecurityAtributes = (LPSECURITY_ATTRIBUTES)malloc(sizeof(SECURITY_ATTRIBUTES));
 	plogger->Info = &Info;
@@ -143,17 +154,22 @@ Exit:
 	return status;
 }
 
-STATUS Info(PLOGGER logger, CHAR* message)
+STATUS Info(
+	_In_ PLOGGER logger,
+	_In_ CHAR* message)
 {
 	return WriteGenericLoggerMessage(logger, "INFO: ", message);
 }
 
-STATUS Warning(PLOGGER logger, CHAR* message)
+STATUS Warning(
+	_In_ PLOGGER logger, 
+	_In_ CHAR* message)
 {
 	return WriteGenericLoggerMessage(logger, "WARNING: ", message);
 }
 
-STATUS DestroyLogger(PLOGGER plogger)
+STATUS DestroyLogger(
+	_Inout_ PLOGGER plogger)
 {
 	STATUS status = SUCCESS;
 

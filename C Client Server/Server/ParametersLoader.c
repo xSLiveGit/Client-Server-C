@@ -141,9 +141,8 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 	}
 	if(!isLogger)
 	{
-		*pipeName = (CHAR*)malloc(sizeof(LOGGER_DEFAULT) + sizeof(CHAR));
-		StringCchCopyA(*pipeName, sizeof(LOGGER_DEFAULT) + 1, LOGGER_DEFAULT);
-
+		*logger = (CHAR*)malloc(sizeof(LOGGER_DEFAULT) + sizeof(CHAR));
+		StringCchCopyA(*logger, sizeof(LOGGER_DEFAULT) + 1, LOGGER_DEFAULT);
 	}
 Exit:
 	if (SUCCESS != status)

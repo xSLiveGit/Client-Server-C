@@ -5,10 +5,16 @@
 
 typedef struct _LOGGER {
 	HANDLE outputFileHandle;
-	STATUS(*Info)(struct _LOGGER* logger, CHAR* message);
-	STATUS(*Warning)(struct _LOGGER* logger, CHAR* message);
 	CRITICAL_SECTION criticalSection;
 	LPSECURITY_ATTRIBUTES lpSecurityAtributes;
+
+	STATUS(*Info)(
+		_In_ struct _LOGGER* logger,
+		_In_ CHAR* message);
+	
+	STATUS(*Warning)(
+		_In_ struct _LOGGER* logger,
+		_In_ CHAR* message);
 } LOGGER, *PLOGGER;
 
 STATUS InitializeLogger(PLOGGER plogger, CHAR* outputFilePath);

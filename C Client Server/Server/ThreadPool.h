@@ -5,11 +5,19 @@
 
 typedef struct _THREAD_POOL {
 	PMY_BLOCKING_QUEUE queue;
-	STATUS(*ProcessElement)(_In_ LPVOID elementToProcess);
-	STATUS(*Start)(struct _THREAD_POOL *threadPool, int nWorkers);
-	STATUS(*Add)(struct _THREAD_POOL *threadPool, LPVOID value);
 	INT nWorkers;
 	HANDLE* threadsHandle;
+
+	STATUS(*ProcessElement)(
+		_In_ LPVOID elementToProcess);
+
+	STATUS(*Start)(
+		_In_ struct _THREAD_POOL *threadPool, 
+		_In_ INT nWorkers);
+
+	STATUS(*Add)(
+		_In_ struct _THREAD_POOL *threadPool,
+		_In_ LPVOID value);
 } THREAD_POOL, *PTHREAD_POOL;
 
 /**

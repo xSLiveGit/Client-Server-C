@@ -41,19 +41,36 @@ typedef struct {
 } PARAMS_LOAD;
 typedef struct _SERVER
 {
-	STATUS(*RemoveServer)(struct _SERVER* pserver);
-	STATUS(*OpenConnexion)(struct _SERVER* pserver);
-	STATUS(*SetStopFlag)(struct _SERVER* pserver);
-	STATUS(*Run)(struct _SERVER* pserver,LONG nMaxClients,INT nWorkers);
 	PPROTOCOL serverProtocol;
 	CHAR* pipeName;
 	DWORD flagOptions;
 	LONG referenceCounter;
 	PTHREAD_POOL threadPool;
 	PDYNAMIC_VECTOR pdynamicVector;
+
+	STATUS(*RemoveServer)(
+		_Inout_ struct _SERVER* pserver);
+	
+	STATUS(*OpenConnexion)(
+		_In_ struct _SERVER* pserver);
+	
+	STATUS(*SetStopFlag)(
+		_Inout_ struct _SERVER* pserver);
+	
+	STATUS(*Run)(
+		_In_ struct _SERVER* pserver,
+		_In_ LONG nMaxClients,
+		_In_ INT nWorkers);
+
 }SERVER, *PSERVER;
 
-STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
-STATUS InitializeUserState(PUSER_STATE *userState,CHAR* username);
+STATUS CreateServer(
+	_Inout_ PSERVER pserver,
+	_In_ CHAR* pipeName,
+	_In_ CHAR* loggerOutputFilePath);
+
+STATUS InitializeUserState(
+	_Inout_ PUSER_STATE *userState,
+	_In_ CHAR* username);
 
 #endif //_SERVER_H_
