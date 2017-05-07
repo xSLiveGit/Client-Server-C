@@ -40,6 +40,7 @@ typedef struct {
 	long *nEncryptedBytes;
 	BOOL *flag;
 } PARAMS_LOAD;
+
 typedef struct _SERVER
 {
 	PPROTOCOL serverProtocol;

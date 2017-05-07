@@ -9,33 +9,87 @@
 #include "DynamicVector.h"
 
 //	---	Public functions declarations: ---
-STATUS OpenConnexion(PSERVER pserver);
-STATUS RemoveServer(PSERVER pserver);
-STATUS SetStopFlag(PSERVER pserver);
-STATUS StartServer(PSERVER pserver, LONG nMaxClients, INT nWorkers);
-STATUS IsValidUser(CHAR* username, CHAR* password);
-STATUS CreateServer(PSERVER pserver, CHAR* pipeName, CHAR* loggerOutputFilePath);
+STATUS OpenConnexion(
+	_Inout_ PSERVER pserver);
+
+STATUS RemoveServer(
+	_Inout_ PSERVER pserver);
+
+STATUS SetStopFlag(
+	_Inout_ PSERVER pserver);
+
+STATUS StartServer(
+	_In_ PSERVER pserver, 
+	_In_ LONG nMaxClients, 
+	_In_ INT nWorkers);
+
+STATUS IsValidUser(
+	_In_ CHAR* username, 
+	_In_ CHAR* password);
+
+STATUS CreateServer(
+	_In_ PSERVER pserver, 
+	_In_ CHAR* pipeName, 
+	_In_ CHAR* loggerOutputFilePath);
 //	---	End public functions declarations: ---
 
 
 
 //	---	Private functions declarations: ---
-BOOL FindElement(LPVOID item1, LPVOID item2);
-STATUS InitializeUserState(PUSER_STATE *userState, CHAR* username);
-STATUS DestroyUserState(PUSER_STATE* userState);
-DWORD WINAPI ServerReaderWorker(LPVOID parameters);
-DWORD WINAPI ServerWriterWorker(LPVOID parameters);
-STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, CHAR* encryptionKey);
-STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage);
+BOOL FindElement(
+	_In_ LPVOID item1, 
+	_In_ LPVOID item2);
+
+STATUS InitializeUserState(
+	_Inout_ PUSER_STATE *userState,
+	_In_ CHAR* username);
+
+STATUS DestroyUserState(
+	_Inout_ PUSER_STATE* userState);
+
+DWORD WINAPI ServerReaderWorker(
+	_In_ LPVOID parameters);
+
+DWORD WINAPI ServerWriterWorker(
+	_In_ LPVOID parameters);
+
+STATUS CreateSpecialPackage(
+	_Inout_ PSPECIAL_PACKAGE *specialPackage,
+	_In_ CHAR* encryptionKey);
+
+STATUS DestroySpecialPackage(
+	_Inout_ PSPECIAL_PACKAGE *specialPackage);
+
 static CHAR globalEncryptionKey[] = "encryptionKey";
-STATUS CryptMessage(CHAR* stringToBeProcessed, CHAR* encryptionKey, unsigned int size);
-STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey);
-DWORD WINAPI InstanceThread(LPVOID lpvParam);
-STATUS ValidUserStatusToResponse(STATUS status, RESPONSE_TYPE* response);
-STATUS CreatePackage(PPACKAGE *package);
-STATUS DestroyPackage(PPACKAGE *package);
-STATUS EncryptionRoutineForSpecialPackage(LPVOID);
-STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters);
+
+STATUS CryptMessage(
+	_Inout_ CHAR* stringToBeProcessed,
+	_In_ CHAR* encryptionKey, 
+	_In_ unsigned int size);
+
+STATUS CryptAllMessages(
+	_In_ PACKAGE *list, 
+	_In_ int size, 
+	_In_ CHAR* encryptionKey);
+
+DWORD WINAPI InstanceThread(
+	_In_ LPVOID lpvParam);
+
+STATUS ValidUserStatusToResponse(
+	_In_ STATUS status,
+	_Out_ RESPONSE_TYPE* response);
+
+STATUS CreatePackage(
+	_Inout_ PPACKAGE *package);
+
+STATUS DestroyPackage(
+	_Inout_ PPACKAGE *package);
+
+STATUS EncryptionRoutineForSpecialPackage(
+	_In_ LPVOID);
+
+STATUS WINAPI ConsoleCommunicationThread(
+	_In_ LPVOID parameters);
 //  ---	End private functions declarations: ---
 
 CHAR* users[][4] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" },{ "Ana","Ana" },{ "Dorel","Dorel" } };
@@ -161,7 +215,9 @@ Exit:
 	return status;
 }
 
-STATUS CreateSpecialPackage(PSPECIAL_PACKAGE *specialPackage, CHAR* encryptionKey)
+STATUS CreateSpecialPackage(
+	_Inout_ PSPECIAL_PACKAGE *specialPackage,
+	_In_ CHAR* encryptionKey)
 {
 	STATUS status;
 	PSPECIAL_PACKAGE _specialPackage;
@@ -193,7 +249,8 @@ Exit:
 	return status;
 }
 
-STATUS DestroySpecialPackage(PSPECIAL_PACKAGE *specialPackage)
+STATUS DestroySpecialPackage(
+	_Inout_ PSPECIAL_PACKAGE *specialPackage)
 {
 	STATUS status;
 
@@ -235,7 +292,8 @@ Exit:
 	return status;
 }
 
-STATUS OpenConnexion(PSERVER pserver)
+STATUS OpenConnexion(
+	_Inout_ PSERVER pserver)
 {
 	STATUS status;
 
@@ -263,7 +321,8 @@ Exit:
 	return status;
 }
 
-STATUS RemoveServer(PSERVER pserver)
+STATUS RemoveServer(
+	_Inout_ PSERVER pserver)
 {
 	// --- Declarations ---
 	STATUS status;
@@ -275,8 +334,6 @@ STATUS RemoveServer(PSERVER pserver)
 	pserver->SetStopFlag(pserver);
 	DestroyThreadPool(&(pserver->threadPool));
 
-	//while (pserver->referenceCounter);
-	//status |= pserver->serverProtocol->CloseConnexion(pserver->serverProtocol);
 	free(pserver->serverProtocol);
 	pserver->serverProtocol = NULL;
 	DestroyLogger(&logger);
@@ -285,7 +342,8 @@ STATUS RemoveServer(PSERVER pserver)
 	return status;
 }
 
-STATUS SetStopFlag(PSERVER pserver)
+STATUS SetStopFlag(
+	_Inout_ PSERVER pserver)
 {
 	// --- Declarations ---
 	STATUS status;
@@ -310,7 +368,10 @@ Exit:
 /**
 *		_IN_			PSERVER			pserver -
 */
-STATUS StartServer(PSERVER pserver, LONG maxClients, INT nWorkers)
+STATUS StartServer(
+	_In_ PSERVER pserver,
+	_In_ LONG nMaxClients,
+	_In_ INT nWorkers)
 {
 	int iThread;
 	STATUS status;
@@ -473,7 +534,9 @@ STATUS CryptAllMessages(PACKAGE *list, int size, CHAR* encryptionKey)
 *		- WRONG_CREDENTIALS			-	if credentials are not valid
 */
 
-STATUS IsValidUser(CHAR* username, CHAR* password)
+STATUS IsValidUser(
+	_In_ CHAR* username,
+	_In_ CHAR* password)
 {
 	STATUS status;
 	int i;
@@ -852,9 +915,9 @@ Exit:
 	InterlockedDecrement(refCounter);
 	free(readerFileName);
 	free(writerFileName);
+	FlushFileBuffers(protocol->GetPipeHandle(protocol));
+	DisconnectNamedPipe(protocol->GetPipeHandle(protocol));
 	free(protocol);
-	FlushFileBuffers(protocol->pipeHandle);
-	DisconnectNamedPipe(protocol->pipeHandle);
 	DestroyBlockingQueue(&blockingQueue);
 	printf("InstanceThread exitting.\n");
 	ExitThread(status);
@@ -1099,7 +1162,9 @@ Exit:
 	return status;
 }
 
-STATUS InitializeUserState(PUSER_STATE *userState, CHAR *username)
+STATUS InitializeUserState(
+	_Inout_ PUSER_STATE *userState,
+	_In_ CHAR* username)
 {
 	HRESULT result;
 	STATUS status;
@@ -1148,7 +1213,8 @@ Exit:
 	return status;
 }
 
-STATUS DestroyUserState(PUSER_STATE* userState)
+STATUS DestroyUserState(
+	_Inout_ PUSER_STATE* userState)
 {
 	STATUS status;
 
@@ -1166,7 +1232,9 @@ Exit:
 	return status;
 }
 
-BOOL FindElement(LPVOID item1, LPVOID item2)
+BOOL FindElement(
+	_In_ LPVOID item1,
+	_In_ LPVOID item2)
 {
 	BOOL res;
 	PUSER_STATE userState1;

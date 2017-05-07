@@ -228,7 +228,6 @@ STATUS Start(
 		pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &package, sizeof(package), &readedBytes);
 		package.buffer[package.size] = '\0';
 		StringCchCopyA(newFileName, sizeof(newFileName), package.buffer);
-		//Sleep(1000);
 		status = pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, package.buffer);
 	}
 	else if (REJECTED_CONNECTION_RESPONSE == response)

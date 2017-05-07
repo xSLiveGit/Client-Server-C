@@ -14,13 +14,35 @@ typedef struct
 	BOOL closeDueTimeout;
 }TIME_OUT_PARAMS;
 STATUS WINAPI DisconnectNamedPipeDueTimeout(LPVOID parameters);
-STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName);
-STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead, DWORD *nNumberOfBytesReaded);
-void SetPipeHandle(PPROTOCOL protocol, HANDLE pipeHandle);
-HANDLE GetPipeHandle(PPROTOCOL protocol);
-STATUS CloseConnexion(PPROTOCOL server);
-STATUS OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
-STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend);
+
+STATUS InitializeConnexion(
+	_In_ PPROTOCOL protocol,
+	_In_ CHAR* fileName);
+
+STATUS ReadPackage(
+	_In_ PPROTOCOL protocol,
+	_Out_ LPVOID buffer,
+	_In_ DWORD nNumberOfBytesToRead,
+	_Out_ DWORD *nNumberOfBytesReaded);
+
+void SetPipeHandle(
+	_Inout_ PPROTOCOL protocol, 
+	_In_ HANDLE pipeHandle);
+
+HANDLE GetPipeHandle(
+	_In_ PPROTOCOL protocol);
+
+STATUS CloseConnexion(
+	_Inout_ PPROTOCOL server);
+
+STATUS OpenNamedPipe(
+	_In_ CHAR* fileName, 
+	_Out_ HANDLE* pipeHandle);
+
+STATUS SendPackage(
+	_In_ PPROTOCOL protocol, 
+	_In_ LPVOID message, 
+	_In_ DWORD nBytesToSend);
 
 STATUS 
 CreateProtocol(_In_ PPROTOCOL protocol)
@@ -36,7 +58,6 @@ CreateProtocol(_In_ PPROTOCOL protocol)
 	protocol->GetPipeHandle = &GetPipeHandle;
 	protocol->SetPipeHandle = &SetPipeHandle;
 	protocol->OpenNamedPipe = &OpenNamedPipe;
-	// --- Exit/CleanUp --
 	return status;
 }
 
@@ -46,12 +67,18 @@ GetPipeHandle(_In_ PPROTOCOL protocol)
 	return protocol->pipeHandle;
 }
 
-void SetPipeHandle(_In_ PPROTOCOL protocol,_In_ HANDLE pipeHandle)
+void SetPipeHandle(
+	_In_ PPROTOCOL protocol,
+	_In_ HANDLE pipeHandle)
 {
 	protocol->pipeHandle = pipeHandle;
 }
 
-STATUS ReadPackage(PPROTOCOL _In_ protocol, LPVOID _Out_ buffer, DWORD _Out_ nNumberOfBytesToRead,_Out_  DWORD *nNumberOfBytesReaded)
+STATUS ReadPackage(
+	_In_ PPROTOCOL  protocol, 
+	_Out_ LPVOID  buffer, 
+	_Out_ DWORD  nNumberOfBytesToRead,
+	_Out_  DWORD *nNumberOfBytesReaded)
 {
 	BOOL res;
 	STATUS status;
@@ -81,15 +108,16 @@ Exit:
 }
 
 STATUS 
-InitializeConnexion(_In_ PPROTOCOL protocol,_In_ CHAR* fileName)
+InitializeConnexion(
+	_In_ PPROTOCOL protocol,
+	_In_ CHAR* fileName)
 {
-	// --- Declarations ---
 	char *tempFileName;
 	BOOL res;
 	STATUS status;
 	SECURITY_ATTRIBUTES security;
 	HRESULT result;
-	// --- Initializations ---
+	
 	result = S_OK;
 	status = 0;
 	res = TRUE;
@@ -98,7 +126,6 @@ InitializeConnexion(_In_ PPROTOCOL protocol,_In_ CHAR* fileName)
 	security.bInheritHandle = TRUE;
 	security.nLength = sizeof(security);
 	security.lpSecurityDescriptor = NULL;
-	// --- Process ---
 	if (NULL == protocol)
 	{
 		status = NULL_POINTER_ERROR;
@@ -149,7 +176,9 @@ EXIT:
 
 
 
-STATUS  OpenNamedPipe(_In_ CHAR* fileName,_Out_ HANDLE* pipeHandle)
+STATUS  OpenNamedPipe(
+	_In_ CHAR* fileName,
+	_Out_ HANDLE* pipeHandle)
 {
 	STATUS status;
 	HANDLE handle;
@@ -195,7 +224,8 @@ Exit:
 }
 
 
-STATUS CloseConnexion(_Inout_ PPROTOCOL server)
+STATUS CloseConnexion(
+	_Inout_ PPROTOCOL server)
 {
 	STATUS status;
 	BOOL res;
@@ -270,7 +300,8 @@ Exit:
 	return status;
 }
 
-STATUS WINAPI DisconnectNamedPipeDueTimeout(_In_ LPVOID parameters)
+STATUS WINAPI DisconnectNamedPipeDueTimeout(
+	_In_ LPVOID parameters)
 {
 	STATUS status;
 	TIME_OUT_PARAMS* params;
