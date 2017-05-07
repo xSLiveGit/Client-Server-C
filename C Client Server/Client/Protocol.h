@@ -12,7 +12,7 @@ typedef struct
 typedef struct
 {
 	unsigned int size;
-	char content[4096];
+	char content[MAX_BUFFER_SIZE];
 } PACKAGE_MESSAGE, *PPACKAGE_MESSAGE;
 
 typedef struct _PROTOCOL

@@ -2,7 +2,7 @@
 #include <strsafe.h>
 
 #define LOGGER_DEFAULT "logger.txt"
-
+#define DEFAULT_PIPE "numepipe"
 BOOL IsNumber(CHAR* string)
 {
 	unsigned size;
@@ -136,8 +136,8 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 	}
 	if (!isPipe)
 	{
-		*pipeName = (CHAR*)malloc(sizeof(DEFAULT_NAMED_PIPE) + sizeof(CHAR));
-		StringCchCopyA(*pipeName, sizeof(DEFAULT_NAMED_PIPE) + 1, DEFAULT_NAMED_PIPE);
+		*pipeName = (CHAR*)malloc(sizeof(DEFAULT_PIPE) + sizeof(CHAR));
+		StringCchCopyA(*pipeName, sizeof(DEFAULT_PIPE) + 1, DEFAULT_PIPE);
 	}
 	if(!isLogger)
 	{

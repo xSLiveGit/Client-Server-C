@@ -100,7 +100,7 @@ STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName)
 			goto EXIT;
 		}
 
-		tempFileName = (char*)malloc(4096 * sizeof(char));
+		tempFileName = (char*)malloc(MAX_BUFFER_SIZE * sizeof(char));
 		//StringCchCopyA(tempFileName, strlen(PREFIX_NAMED_PIPE), PREFIX_NAMED_PIPE);
 		strcpy_s(tempFileName, 13, PREFIX_NAMED_PIPE);
 
@@ -159,7 +159,7 @@ STATUS  OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle)
 		goto Exit;
 	}
 
-	tempString = (CHAR*)malloc(4096 * sizeof(CHAR));
+	tempString = (CHAR*)malloc(MAX_BUFFER_SIZE * sizeof(CHAR));
 	if (NULL == tempString)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -208,7 +208,7 @@ STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle)
 		goto Exit;
 	}
 
-	tempString = (CHAR*)malloc(4096 * sizeof(CHAR));
+	tempString = (CHAR*)malloc(MAX_BUFFER_SIZE * sizeof(CHAR));
 	if (NULL == tempString)
 	{
 		status = MALLOC_FAILED_ERROR;

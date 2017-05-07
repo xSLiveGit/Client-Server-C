@@ -1,5 +1,6 @@
 #include "ConsoleCommunication.h"
 #include <stdio.h>
+#include "DynamicVector.h"
 
 STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
 {
@@ -38,10 +39,13 @@ STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters)
 				counter++;
 				scanf_s("%c", &next);
 			} while (next != '\n');
+			scanf_s("%c", &next);
+
 			if (counter > 1)
 			{
 				printf("Invalid option. %s", infoString);
 			}
+		
 			next = 0;
 			counter = 0;
 		}

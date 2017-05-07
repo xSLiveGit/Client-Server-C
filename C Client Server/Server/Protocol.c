@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <strsafe.h>		
+#include "Status.h"
 
 typedef struct
 {
@@ -21,15 +22,14 @@ STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS CloseConnexion(PPROTOCOL server);
 STATUS OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle);
 STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend);
-STATUS CreateProtocol(PPROTOCOL protocol)
+
+STATUS 
+CreateProtocol(_In_ PPROTOCOL protocol)
 {
-	// --- Declarations ---
 	STATUS status;
 
-	// --- Initializations ---
 	status = SUCCESS;
 
-	// --- Process ---
 	(*protocol).InitializeConnexion = &InitializeConnexion;
 	protocol->CloseConnexion = &CloseConnexion;
 	protocol->SendPackage = &SendPackage;
@@ -41,28 +41,24 @@ STATUS CreateProtocol(PPROTOCOL protocol)
 	return status;
 }
 
-HANDLE GetPipeHandle(PPROTOCOL protocol)
+HANDLE 
+GetPipeHandle(_In_ PPROTOCOL protocol)
 {
 	return protocol->pipeHandle;
 }
 
-void SetPipeHandle(PPROTOCOL protocol, HANDLE pipeHandle)
+void SetPipeHandle(_In_ PPROTOCOL protocol,_In_ HANDLE pipeHandle)
 {
 	protocol->pipeHandle = pipeHandle;
 }
 
-STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead, DWORD *nNumberOfBytesReaded)
+STATUS ReadPackage(PPROTOCOL _In_ protocol, LPVOID _Out_ buffer, DWORD _Out_ nNumberOfBytesToRead,_Out_  DWORD *nNumberOfBytesReaded)
 {
 	BOOL res;
 	STATUS status;
-//	HANDLE timeoutThread;
-//	TIME_OUT_PARAMS timeoutParams;
 
-//	timeoutThread = NULL;
 	status = SUCCESS;
 	res = TRUE;
-//	timeoutParams.pipeHandle = NULL;
-//	timeoutParams.closeDueTimeout = FALSE;
 
 	if (NULL == nNumberOfBytesReaded || NULL == buffer)
 	{
@@ -70,27 +66,13 @@ STATUS ReadPackage(PPROTOCOL protocol, LPVOID buffer, DWORD nNumberOfBytesToRead
 		goto Exit;
 	}
 
-//	timeoutThread = CreateThread(
-//		logger.lpSecurityAtributes,
-//		0,
-//		DisconnectNamedPipeDueTimeout,
-//		&timeoutParams,
-//		0,
-//		NULL
-//		);
 	res = ReadFile(
-		protocol->pipeHandle,		//_In_        HANDLE       hFile,
+		protocol->pipeHandle,			//_In_        HANDLE       hFile,
 		buffer,							//_Out_       LPVOID       lpBuffer,
 		nNumberOfBytesToRead,			//_In_        DWORD        nNumberOfBytesToRead,
 		nNumberOfBytesReaded,			//_Out_opt_   LPDWORD      lpNumberOfBytesRead,
 		NULL							//_Inout_opt_ LPOVERLAPPED lpOverlapped
 		);
-//	TerminateThread(timeoutThread, SUCCESS);
-//	if(timeoutParams.closeDueTimeout)
-//	{
-//		status = TIME_OUT;
-//		goto Exit;
-//	}
 	if (!res)
 	{
 		status = COMUNICATION_ERROR;
@@ -99,7 +81,8 @@ Exit:
 	return status;
 }
 
-STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName)
+STATUS 
+InitializeConnexion(_In_ PPROTOCOL protocol,_In_ CHAR* fileName)
 {
 	// --- Declarations ---
 	char *tempFileName;
@@ -128,14 +111,14 @@ STATUS InitializeConnexion(PPROTOCOL protocol, CHAR* fileName)
 	printf_s("Pipe namefile: %s\n", tempFileName);
 	protocol->pipeHandle = CreateNamedPipeA
 		(
-			tempFileName,				//_In_     LPCTSTR               lpName,
-			PIPE_ACCESS_DUPLEX,			//_In_     DWORD                 dwOpenMode,
-			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,			//_In_     DWORD                 dwPipeMode,
-			PIPE_UNLIMITED_INSTANCES,	//_In_     DWORD                 nMaxInstances,
-			MAX_MESSAGE_BYTES,						//_In_     DWORD                 nOutBufferSize,
-			MAX_MESSAGE_BYTES,						//_In_     DWORD                 nInBufferSize,
-			0,							//_In_     DWORD                 nDefaultTimeOut,
-			logger.lpSecurityAtributes						//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
+			tempFileName,												//_In_     LPCTSTR               lpName,
+			PIPE_ACCESS_DUPLEX,											//_In_     DWORD                 dwOpenMode,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,		//_In_     DWORD                 dwPipeMode,
+			PIPE_UNLIMITED_INSTANCES,									//_In_     DWORD                 nMaxInstances,
+			MAX_MESSAGE_BYTES,											//_In_     DWORD                 nOutBufferSize,
+			MAX_MESSAGE_BYTES,											//_In_     DWORD                 nInBufferSize,
+			0,															//_In_     DWORD                 nDefaultTimeOut,
+			logger.lpSecurityAtributes									//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
 			);
 
 	res = ConnectNamedPipe
@@ -157,7 +140,7 @@ EXIT:
 
 
 
-STATUS  OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle)
+STATUS  OpenNamedPipe(_In_ CHAR* fileName,_Out_ HANDLE* pipeHandle)
 {
 	STATUS status;
 	HANDLE handle;
@@ -175,7 +158,7 @@ STATUS  OpenNamedPipe(CHAR* fileName, HANDLE* pipeHandle)
 		goto Exit;
 	}
 
-	tempString = (CHAR*)malloc(4096 * sizeof(CHAR));
+	tempString = (CHAR*)malloc(MAX_BUFFER_SIZE * sizeof(CHAR));
 	if (NULL == tempString)
 	{
 		status = MALLOC_FAILED_ERROR;
@@ -203,77 +186,15 @@ Exit:
 	return status;
 }
 
-STATUS OpenAndConnectNamedPipe(CHAR* fileName, HANDLE* pipeHandle)
+
+STATUS CloseConnexion(_Inout_ PPROTOCOL server)
 {
-	STATUS status;
-	HANDLE handle;
-	BOOL res;
-	CHAR* tempString;
-	SECURITY_ATTRIBUTES security;
-
-	status = SUCCESS;
-	handle = NULL;
-	res = TRUE;
-	tempString = NULL;
-	security.bInheritHandle = TRUE;
-	security.nLength = 0;
-	security.lpSecurityDescriptor = NULL;
-	if (NULL == pipeHandle)
-	{
-		status = NULL_POINTER_ERROR;
-		goto Exit;
-	}
-
-	tempString = (CHAR*)malloc(4096 * sizeof(CHAR));
-	if (NULL == tempString)
-	{
-		status = MALLOC_FAILED_ERROR;
-		goto Exit;
-	}
-
-	StringCchCopyA(tempString, sizeof(tempString), PREFIX_NAMED_PIPE);
-	StringCchCatA(tempString, sizeof(tempString), fileName);
-	printf("Format string for pipe construction: %s\n", tempString);
-	handle = CreateNamedPipeA
-		(
-			tempString,														//_In_     LPCTSTR               lpName,
-			PIPE_ACCESS_DUPLEX,												//_In_     DWORD                 dwOpenMode,
-			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,			//_In_     DWORD                 dwPipeMode,
-			PIPE_UNLIMITED_INSTANCES,										//_In_     DWORD                 nMaxInstances,
-			PIPE_READMODE_MESSAGE,											//_In_     DWORD                 nOutBufferSize,
-			PIPE_READMODE_MESSAGE,											//_In_     DWORD                 nInBufferSize,
-			0,																//_In_     DWORD                 nDefaultTimeOut,
-			&security															//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
-			);
-	printf_s("Error connect pipe before connect: %d", GetLastError());
-	res = ConnectNamedPipe
-		(
-			handle,
-			NULL
-			);
-	printf_s("Error connect pipe: %d", GetLastError());
-	if (!res)
-	{
-		status = CONNECTION_ERROR;
-		goto Exit;
-	}
-	*pipeHandle = handle;
-Exit:
-	free(tempString);
-	return status;
-}
-
-STATUS CloseConnexion(PPROTOCOL server)
-{
-	// --- Declarations ---
 	STATUS status;
 	BOOL res;
 
-	// --- Initializations ---
 	status = SUCCESS;
 	res = TRUE;
 
-	// --- Process ---
 	res = DisconnectNamedPipe(server->pipeHandle);
 	if (!res)
 	{
@@ -288,7 +209,6 @@ STATUS CloseConnexion(PPROTOCOL server)
 
 	server->pipeName = "";
 
-	// --- Exit/CleanUp --
 	return status;
 }
 
@@ -305,7 +225,8 @@ STATUS CloseConnexion(PPROTOCOL server)
 *		- CONNECTION_ERROR if there occurs pipe connexion error
 */
 
-STATUS SendPackage(PPROTOCOL protocol, LPVOID message, DWORD nBytesToSend)
+STATUS
+SendPackage(_In_ PPROTOCOL protocol,_In_ LPVOID message,_In_ DWORD nBytesToSend)
 {
 	STATUS status;
 	BOOL res;
@@ -337,7 +258,7 @@ Exit:
 	return status;
 }
 
-STATUS WINAPI DisconnectNamedPipeDueTimeout(LPVOID parameters)
+STATUS WINAPI DisconnectNamedPipeDueTimeout(_In_ LPVOID parameters)
 {
 	STATUS status;
 	TIME_OUT_PARAMS* params;
@@ -359,13 +280,6 @@ Exit:
 	return status;
 }
 
-/**
-* Parameters:
-*		_IN_		PPROTOCOL		protocol
-* Returns:
-*		SUCCESS
-*
-*/
 
 
 

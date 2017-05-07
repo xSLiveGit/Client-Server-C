@@ -7,7 +7,7 @@
 #include "Logger.h"
 #include "Globals.h"
 #include "ThreadPool.h"
-#include "../DataStructures/DataStructures/DynamicVector.h"
+#include "DynamicVector.h"
 #define REJECT_CLIENTS_FLAG			1
 #define LIMITED_WORKERS_FLAG		(1<<1)
 

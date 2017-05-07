@@ -6,6 +6,7 @@
 #include <strsafe.h>
 #include "Globals.h"
 #include <psapi.h>
+#include "DynamicVector.h"
 
 //	---	Public functions declarations: ---
 STATUS OpenConnexion(PSERVER pserver);
@@ -37,9 +38,9 @@ STATUS EncryptionRoutineForSpecialPackage(LPVOID);
 STATUS WINAPI ConsoleCommunicationThread(LPVOID parameters);
 //  ---	End private functions declarations: ---
 
-CHAR* users[][2] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" } };
-DWORD nUsers = 2;
-#define BUFSIZE 4096
+CHAR* users[][4] = { { "Raul","ParolaRaul" } ,{ "Sergiu","ParolaSergiu" },{"Ana","Ana"},{"Dorel","Dorel"} };
+DWORD nUsers = 4;
+#define BUFSIZE MAX_BUFFER_SIZE
 
 
 

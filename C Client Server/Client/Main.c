@@ -53,7 +53,25 @@ STATUS main(int argc, char** argv)
 	CHAR* username;
 	CHAR* password;
 	CHAR* encryptionKey;
+	CHAR auxFile[200];
+	CHAR auxFile2[100];
+	BOOL same;
+	HANDLE inputFileHandle;
+	HANDLE outputFileHandle;
+	DWORD nReadedBytes;
+	CHAR* copyBuffer;
+	DWORD totalBytes;
+	DWORD nWritedBytes;
+	BOOL res;
 
+	res = TRUE;
+	nWritedBytes = 0;
+	totalBytes = 0;
+	copyBuffer = NULL;
+	nReadedBytes = 0;
+	outputFileHandle = INVALID_HANDLE_VALUE;
+	inputFileHandle = INVALID_HANDLE_VALUE;
+	same = FALSE;
 	status = SUCCESS;
 	inputFilePath = NULL;
 	outputFilePath = NULL;
@@ -68,8 +86,18 @@ STATUS main(int argc, char** argv)
 		ThreatError(status);
 		goto Exit;
 	}
+
 	printf_s("Username: %s\nPassword:%s\nInput: %s\nOutput: %s\nKey: %s\nPipe: %s\n", username, password, inputFilePath, outputFilePath, encryptionKey, pipeName);
-	
+	if(0 == strcmp(inputFilePath,outputFilePath))
+	{
+		GetTempPathA(40, auxFile2);
+		GetTempFileNameA(auxFile2, "temporary", 0, auxFile);
+		printf_s("Err: %d", GetLastError());
+		free(outputFilePath);
+		outputFilePath = (CHAR*)malloc(100 * sizeof(CHAR));
+		StringCchCopyA(outputFilePath, 90, auxFile);
+		same = TRUE;
+	}
 	status |= CreateClient(&client, pipeName);
 	if(SUCCESS != status)
 	{
@@ -81,6 +109,66 @@ STATUS main(int argc, char** argv)
 		goto Exit;
 	}
 	status |= client.Run(&client, inputFilePath, outputFilePath,encryptionKey,username,password);
+	if(SUCCESS == status && same)
+	{
+		totalBytes = (MAX_BUFFER_SIZE + 1);
+		inputFileHandle = CreateFileA(
+			outputFilePath,			//	_In_     LPCTSTR               lpFileName,
+			GENERIC_READ,			//	_In_     DWORD                 dwDesiredAccess,
+			FILE_SHARE_READ,		//	_In_     DWORD                 dwShareMode,
+			NULL,					//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+			OPEN_EXISTING,			//	_In_     DWORD                 dwCreationDisposition,
+			FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
+			NULL					//_In_opt_ HANDLE                hTemplateFile
+			);
+		if (NULL == inputFileHandle || INVALID_HANDLE_VALUE == inputFileHandle)
+		{
+			status = FILE_ERROR;
+			printf_s("inputFileHandle is invalid");
+			goto Exit;
+		}
+
+
+		outputFileHandle = CreateFileA(
+			inputFilePath,							//	_In_     LPCTSTR               lpFileName,
+			GENERIC_WRITE,							//	_In_     DWORD                 dwDesiredAccess,
+			0,										//	_In_     DWORD                 dwShareMode,
+			NULL,									//	_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+			OPEN_ALWAYS,							//	_In_     DWORD                 dwCreationDisposition,
+			FILE_ATTRIBUTE_NORMAL,					//	_In_     DWORD                 dwFlagsAndAttributes,
+			NULL									//	_In_opt_ HANDLE                hTemplateFile
+			);
+		if (NULL == outputFileHandle || INVALID_HANDLE_VALUE == outputFileHandle)
+		{
+			status = FILE_ERROR;
+			goto Exit;
+		}
+		copyBuffer = (CHAR*)malloc(totalBytes * sizeof(CHAR));
+		while(TRUE)
+		{
+			res = ReadFile(inputFileHandle, copyBuffer, totalBytes, &nReadedBytes, NULL);
+			if(!res)
+			{
+				printf_s("Failed\n");
+				goto Exit;
+			}
+			res = WriteFile(outputFileHandle, copyBuffer, nReadedBytes, &nWritedBytes, NULL);
+			if (!res || (nReadedBytes != nWritedBytes))
+			{
+				printf_s("Failed\n");
+				goto Exit;
+			}
+			if(nWritedBytes != totalBytes)
+			{
+				break;
+			}
+		}
+		FlushFileBuffers(outputFileHandle);
+		printf_s("Successfully\n");
+		CloseHandle(inputFileHandle);
+		CloseHandle(outputFileHandle);
+		res = DeleteFile(auxFile);
+	}
 	status |= client.RemoveClient(&client);
 
 	getchar();
@@ -92,6 +180,7 @@ Exit:
 	free(username);
 	free(password);
 	free(pipeName);
+	free(copyBuffer);
 	_CrtDumpMemoryLeaks();
 	return status;
 }

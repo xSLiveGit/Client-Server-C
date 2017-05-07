@@ -14,44 +14,4 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DynamicVector.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MyHeap.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MyPriorityBlockingQueue.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Server\ThreadPool.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Server\MyBlockingQueue.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Status.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DynamicVector.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MyHeap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MyPriorityQueue.c">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Server\ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Server\MyBlockingQueue.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
 </Project>

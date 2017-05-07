@@ -2,7 +2,6 @@
 #ifndef _DYNAMICVECTOR_H_
 #define _DYNAMICVECTOR_H_
 #include "Status.h"
-#include <stdio.h>
 typedef struct {
 	LPVOID *v;
 	int size;

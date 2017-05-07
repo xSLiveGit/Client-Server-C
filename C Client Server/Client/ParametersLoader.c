@@ -9,10 +9,11 @@
  *
  *
  */
-
+#define DEFAULT_KEY "key"
 /**
- * All outout parameters will be NULL if something will be wrong
+ * All output parameters will be NULL if something will be wrong
  */
+#define DEFAULT_NAMED_PIPE "numepipe"
 STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** outputFilePath, CHAR** encryptionKey, CHAR **username, CHAR** password, CHAR** pipeName)
 {
 	STATUS status;
@@ -157,7 +158,7 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 		}
 	}
 
-	if((TRUE != isInputFile) || (TRUE != isEncryptionKey)|| (TRUE != isUsername) || (TRUE != isPassword) )
+	if((TRUE != isInputFile) || (TRUE != isUsername) || (TRUE != isPassword) )
 	{
 		status = WRONG_ARGUMENTS_STRUCTURE;
 		goto Exit;
@@ -168,15 +169,30 @@ STATUS LoadParameters(char** argv, int argc, CHAR** inputFilePath, CHAR** output
 		*outputFilePath = (CHAR*)malloc(strlen(*inputFilePath)*sizeof(CHAR) + 2*sizeof(CHAR));
 		res = StringCchCopyA(*outputFilePath, strlen(*inputFilePath) + 1, *inputFilePath);
 		if(res != S_OK)
-			{
+		{
 				status = STRING_ERROR;
 				goto Exit;
 		}
 	}
 	if(!isPipe)
 	{
-		*pipeName = (CHAR*)malloc(sizeof(DEFAULT_NAMED_PIPE) + sizeof(CHAR));
-		StringCchCopyA(*pipeName, sizeof(DEFAULT_NAMED_PIPE) + 1, DEFAULT_NAMED_PIPE);
+		*pipeName = (CHAR*)malloc(sizeof(DEFAULT_NAMED_PIPE) * sizeof(CHAR) + sizeof(CHAR));
+		res = StringCchCopyA(*pipeName, sizeof(DEFAULT_NAMED_PIPE) + 1, DEFAULT_NAMED_PIPE);
+		if (res != S_OK)
+		{
+			status = STRING_ERROR;
+			goto Exit;
+		}
+	}
+	if(!isEncryptionKey)
+	{
+		*encryptionKey = (CHAR*)malloc(sizeof(DEFAULT_KEY) * sizeof(CHAR) + sizeof(CHAR));
+		res = StringCchCopyA(*pipeName, sizeof(DEFAULT_KEY) + 1, DEFAULT_KEY);
+		if (res != S_OK)
+		{
+			status = STRING_ERROR;
+			goto Exit;
+		}
 	}
 Exit:
 	if(SUCCESS != status)
