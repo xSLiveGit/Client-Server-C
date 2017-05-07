@@ -63,7 +63,10 @@ Exit:
 }
 
 
-STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CHAR* message)
+STATUS WriteGenericLoggerMessage(
+	_In_ PLOGGER logger,
+	_In_ CHAR* messageTypeIdentifier,
+	_In_ CHAR* message)
 {
 	STATUS status;
 	SYSTEMTIME systemtime;
@@ -111,29 +114,29 @@ STATUS WriteGenericLoggerMessage(PLOGGER logger, CHAR* messageTypeIdentifier, CH
 	GetSystemTime(&systemtime);
 	sprintf_s(tempBuffer, sizeof(tempBuffer), " %d/%d/%d %d:%d:%d:%4d ", systemtime.wDay, systemtime.wMonth, systemtime.wYear, systemtime.wHour, systemtime.wMinute, systemtime.wSecond, systemtime.wMilliseconds);
 	res = StringCchCopyA(messageToWrite, totalBytesMessage, tempBuffer);
-	if (!res)
+	if (S_OK != res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, messageTypeIdentifier);//Type: day/month/year hour:minute:second:milisecond
-	if (!res)
+	if (S_OK != res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, message);
-	if (!res)
+	if (S_OK != res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;
 	}
 	res = StringCchLengthA(messageToWrite, totalBytesMessage, &length);
-	if (!res)
+	if (S_OK != res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;
 	}
 	res = StringCchCatA(messageToWrite, totalBytesMessage, "\n");
-	if (!res)
+	if (S_OK != res)
 	{
-		status = FACILITY_AUDCLNT;//O EROARE BUNA PANA VAD DE CE CRAPA
+		status = STRING_ERROR;
 	}
 	EnterCriticalSection(&(logger->criticalSection));//I prefer an error margin for time rather than blocking the critical section for a long time
 	res = WriteFile(

@@ -1,19 +1,28 @@
 #include "ParametersLoader.h"
 #include <strsafe.h>
 
-/**
- *
- *	@params:
- *				-
- *
- *
- *
- */
 #define DEFAULT_KEY "key"
-/**
- * All output parameters will be NULL if something will be wrong
- */
+
 #define DEFAULT_NAMED_PIPE "numepipe"
+
+BOOL VerySize(CHAR* string)
+{
+	HRESULT result;
+	size_t length;
+
+	result = S_OK;
+	length = 0;
+
+	result = StringCchLengthA(string, 99, &length);
+	if ((S_OK != result) || (length > 99))
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
+/**
+* All output parameters will be NULL if something will be wrong
+*/
 STATUS LoadParameters(
 	_In_ char** argv, 
 	_In_ int argc, 
@@ -55,6 +64,16 @@ STATUS LoadParameters(
 	*username = NULL;
 	*password = NULL;
 	*pipeName = NULL;
+
+	for (iParameter = 1; iParameter < argc; iParameter++)
+	{
+		validSize = VerySize(argv[iParameter]);
+		if (!validSize)
+		{
+			status = WRONG_ARGUMENTS_STRUCTURE;
+			goto Exit;
+		}
+	}
 
 	for (iParameter = 1; iParameter < argc;iParameter++)
 	{

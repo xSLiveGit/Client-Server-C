@@ -17,16 +17,40 @@ BOOL IsNumber(CHAR* string)
 	return TRUE;
 }
 
-STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients, CHAR** pipeName,CHAR** logger)
+BOOL VerySize(CHAR* string)
+{
+	HRESULT result;
+	size_t length;
+
+	result = S_OK;
+	length = 0;
+
+	result = StringCchLengthA(string, 99, &length);
+	if((S_OK!=result) || (length > 99))
+	{
+		return FALSE;
+	}
+	return TRUE;
+}
+
+STATUS LoadParameters(
+	_In_ char** argv, 
+	_In_ int argc, 
+	_In_ CHAR** nWorkers,
+	_In_ CHAR** nMaxClients, 
+	_In_ CHAR** pipeName,
+	_In_ CHAR** logger)
 {
 	STATUS status;
 	BOOL isNWorkers;
 	BOOL isNMaxClients;
 	BOOL isPipe;
 	BOOL isLogger;
+	BOOL validSize;
 	INT iParameter;
 	HRESULT res;
 
+	validSize = TRUE;
 	res = TRUE;
 	status = SUCCESS;
 	isNWorkers = FALSE;
@@ -44,6 +68,15 @@ STATUS LoadParameters(char** argv, int argc, CHAR** nWorkers, CHAR** nMaxClients
 	*nMaxClients = NULL;
 	*nWorkers = NULL;
 	*logger = NULL;
+	for (iParameter = 1; iParameter < argc; iParameter++)
+	{
+		validSize = VerySize(argv[iParameter]);
+		if(!validSize)
+		{
+			status = WRONG_ARGUMENTS_STRUCTURE;
+			goto Exit;
+		}
+	}
 
 	for (iParameter = 1; iParameter < argc; iParameter++)
 	{

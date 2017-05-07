@@ -564,7 +564,8 @@ Exit:
 	return status;
 }
 
-DWORD WINAPI InstanceThread(LPVOID lpvParam)
+DWORD WINAPI InstanceThread(
+	_In_ LPVOID lpvParam)
 {
 	STATUS status;
 	BOOL res;
@@ -597,7 +598,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	INT position;
 	PUSER_STATE userState;
 	PUSER_STATE userStateAux;
+	HRESULT result;
 
+	result = S_OK;
 	userStateAux = NULL;
 	userState = NULL;
 	position = -1;
@@ -648,7 +651,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	}
 	CreateProtocol(protocol);
 	protocol->InitializeConnexion(protocol, params.fileName);
-	//logger.Info(&logger, "New connetion has been esteblished in thread");
+	logger.Info(&logger, "A new connetion has been esteblished in thread");
 	if (!res)
 	{
 		logger.Warning(&logger, "Connection error in server thread");
@@ -669,7 +672,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		}
 		if (LOGIN_REQUEST == request)
 		{
-			printf_s("Is login request\n");
 			logger.Info(&logger, "The server has received a login request");
 			status = LoginHandler(protocol,username);
 			if ((NULL_POINTER_ERROR == status) || (MALLOC_FAILED_ERROR == status))
@@ -689,7 +691,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 					goto Exit;
 				}
 				status = VectorSearch(pDynamicVector, userState, &position, &FindElement);
-				if(SUCCESS == status)//found
+				if(SUCCESS == status)
 				{
 					DestroyUserState(&userState);
 					userState = NULL;
@@ -744,9 +746,25 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	clientParamsLoader.threadPool = threadPool;
 	clientParamsLoader.nEncryptedPackage = &nReaderPackageProccessed;
 	clientParamsLoader.blockingQueue = blockingQueue;
-	StringCchCopyA(clientParamsLoader.fileName, strlen(params.fileName)+3, params.fileName);
-	StringCchCatA(clientParamsLoader.fileName, strlen(params.fileName) + 3, "R");
-	StringCchCopyA(clientParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
+	result = StringCchCopyA(clientParamsLoader.fileName, strlen(params.fileName)+3, params.fileName);
+	if(S_OK!= result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	result = StringCchCatA(clientParamsLoader.fileName, strlen(params.fileName) + 3, "R");
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	result = StringCchCopyA(clientParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+
 	readerHandle = CreateThread(
 		NULL,              // no security attribute 
 		0,						// stack size 
@@ -761,18 +779,33 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 
-	StringCchCopyA(serverParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
+	result = StringCchCopyA(serverParamsLoader.encryptionKey, sizeof(params.encryptionKey), encryptionKey);
+	if(S_OK!= result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
 	serverParamsLoader.threadPool = threadPool;
 	serverParamsLoader.nEncryptedPackage = &nWriterPackageProccessed;
 	serverParamsLoader.blockingQueue = blockingQueue;
 	serverParamsLoader.nEncryptedBytes = &userState->nEncryptedBytes;
-	StringCchCopyA(serverParamsLoader.fileName, strlen(params.fileName) + 3, params.fileName);
-	StringCchCatA(serverParamsLoader.fileName, strlen(params.fileName) + 3, "W");
+	result = StringCchCopyA(serverParamsLoader.fileName, strlen(params.fileName) + 3, params.fileName);
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
+	result = StringCchCatA(serverParamsLoader.fileName, strlen(params.fileName) + 3, "W");
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto Exit;
+	}
 	writerHandle = CreateThread(
-		NULL,		// no security attribute 
+		NULL,							// no security attribute 
 		0,								// stack size 
-		ServerWriterWorker,					// thread proc
-		(&serverParamsLoader),	// thread parameter 
+		ServerWriterWorker,				// thread proc
+		(&serverParamsLoader),			// thread parameter 
 		0,								// not suspended 
 		&writerExitCode					// returns thread ID
 		);
@@ -785,30 +818,20 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		goto Exit;
 	}
 
-	WaitForSingleObject(readerHandle, INFINITE);
-//	GetExitCodeThread(readerHandle, &readerExitCode);
-//	if(readerExitCode != SUCCESS)
-//	{
-//		status = THREAD_ERROR;
-//		response = FAILED_RESPONSE;
-//		TerminateThread(readerHandle, THREAD_ERROR);
-//		protocol->SendPackage(protocol, &response, sizeof(response));
-//		goto Exit;
-//	}
-	while(nReaderPackageProccessed != nWriterPackageProccessed)//wait for writer worker to resend encripted message
+	readerExitCode = WaitForSingleObject(readerHandle, INFINITE);
+	if(readerExitCode != SUCCESS)
+	{
+		status = THREAD_ERROR;
+		response = FAILED_RESPONSE;
+		TerminateThread(readerHandle, THREAD_ERROR);
+		protocol->SendPackage(protocol, &response, sizeof(response));
+		goto Exit;
+	}
+	while(nReaderPackageProccessed != nWriterPackageProccessed)//wait for writer worker to resend encrypted message
 	{
 		Sleep(25);
 	}
 	TerminateThread(writerHandle, SUCCESS);
-	
-//	if (writerExitCode != SUCCESS)
-//	{
-//		status = THREAD_ERROR;
-//		response = FAILED_RESPONSE;
-//		TerminateThread(readerHandle, THREAD_ERROR);
-//		protocol->SendPackage(protocol, &response, sizeof(response));
-//		goto Exit;
-//	}
 
 	response = OK_RESPONSE;
 	protocol->SendPackage(protocol, &response, sizeof(response));
@@ -818,17 +841,16 @@ Exit:
 	free(readerFileName);
 	free(writerFileName);
 	free(protocol);
-	printf_s("Exit thread\n");
 	FlushFileBuffers(protocol->pipeHandle);
 	DisconnectNamedPipe(protocol->pipeHandle);
 	DestroyBlockingQueue(&blockingQueue);
-	//	CloseHandle(protocol->pipeHandle);
 	printf("InstanceThread exitting.\n");
-	//ExitThread(1);
-	return 1;
+	ExitThread(status);
 }
 
-STATUS ValidUserStatusToResponse(STATUS loginStatus, RESPONSE_TYPE* response)
+STATUS ValidUserStatusToResponse(
+	_In_ STATUS loginStatus, 
+	_Out_ RESPONSE_TYPE* response)
 {
 	STATUS status;
 
@@ -853,7 +875,8 @@ Exit:
 	return status;
 }
 
-DWORD WINAPI ServerReaderWorker(LPVOID parameters)
+STATUS WINAPI ServerReaderWorker(
+	_In_ LPVOID parameters)
 {
 	STATUS status;
 	PARAMS_LOAD params;
@@ -897,39 +920,45 @@ DWORD WINAPI ServerReaderWorker(LPVOID parameters)
 	StringCchCopyA(encryptionKey, sizeof(encryptionKey), params.encryptionKey);
 
 	CreateProtocol(&protocol);
-	logger.Info(&logger, "Server reader will initialize the connection with");
-	logger.Info(&logger, params.fileName);
 	protocol.InitializeConnexion(&protocol, params.fileName);
 	logger.Info(&logger, "Server initialized the conection");
 	(*(params.nEncryptedPackage)) = 0;
 	while(TRUE)
 	{
-		logger.Info(&logger,"Server will read a request");
 		status = protocol.ReadPackage(&protocol, &request, sizeof(request), &nReadedBytes);
-		logger.Info(&logger, "Server read a request");
 		if (ENCRYPTED_MESSAGE_REQUEST == request)
 		{
-			logger.Info(&logger, "The readed request is ENCRYPTED_MESSAGE_REQUEST");
-			//@TODO verify with __try malloc error
+			logger.Info(&logger, "The server read ENCRYPTED_MESSAGE_REQUEST");
 			status = CreatePackage(&packageForEncrypt);
+			if(SUCCESS != status)
+			{
+				goto Exit;
+			}
 			status = CreateSpecialPackage(&specialPackgeForThreadPool, encryptionKey);
+			if (SUCCESS != status)
+			{
+				goto Exit;
+			}
 			specialPackgeForThreadPool->package = packageForEncrypt;
 			packageForEncrypt->size = 0;
 
-			logger.Info(&logger, "The server has received an encryption message request");
 			status = protocol.ReadPackage(&protocol, packageForEncrypt, sizeof(PACKAGE), &nReadedBytes);
 			if (SUCCESS != status)
 			{
 				logger.Info(&logger, "The server could not read the encryption package");
 				goto Exit;
 			}
-			logger.Info(&logger, "The server read the encryption package");
-
 			packageForEncrypt->buffer[packageForEncrypt->size] = '\0';
-			logger.Info(&logger, "Server is trying to encrypt given message.\n");
-			blockingQueue->Add(blockingQueue, specialPackgeForThreadPool);
-			//			CryptMessage(package.buffer, encryptionKey, package.size);
-			threadPool->Add(threadPool, specialPackgeForThreadPool);
+			status = blockingQueue->Add(blockingQueue, specialPackgeForThreadPool);
+			if (SUCCESS != status)
+			{
+				goto Exit;
+			}
+			status = threadPool->Add(threadPool, specialPackgeForThreadPool);
+			if (SUCCESS != status)
+			{
+				goto Exit;
+			}
 			(*(params.nEncryptedPackage))++;
 		}
 		else if ((LOGOUT_REQUEST == request) || (FINISH_CONNECTION_REQUEST == request))
@@ -950,7 +979,8 @@ Exit:
 }
 
 
-DWORD WINAPI ServerWriterWorker(LPVOID parameters)
+STATUS WINAPI ServerWriterWorker(
+	_In_ LPVOID parameters)
 {
 	STATUS status;
 	PARAMS_LOAD params;
@@ -1015,10 +1045,9 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 			goto Exit;
 		}
 		logger.Info(&logger,"A package was readed by writer");
-		if (GET_ENCRYPTED_MESSAGE_REQUEST == request)//AICI II DAM SI MESAJUL OK/WRONG_BEHAVIOR_PROTOCOL si apoi mesajul 
+		if (GET_ENCRYPTED_MESSAGE_REQUEST == request) 
 		{
 			logger.Info(&logger, "The server has received GET_ENCRYPTED_MESSAGE_REQUEST");
-			//@TODO Here we will get the package form the list filled by threadpool process
 			status = blockingQueue->Take(blockingQueue, &specialPackgeForThreadPool);
 			timeToSleep = 10;
 			logger.Info(&logger, "Will wait fait package encription");
@@ -1028,7 +1057,6 @@ DWORD WINAPI ServerWriterWorker(LPVOID parameters)
 				timeToSleep += 5;
 			}
 			logger.Info(&logger, "Taked a package for ennript");
-			//@TODO: thread status!= succes
 			response = OK_RESPONSE;
 			status = protocol.SendPackage(&protocol, &response, sizeof(response));
 			if (SUCCESS != status)

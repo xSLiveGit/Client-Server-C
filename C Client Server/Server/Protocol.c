@@ -88,8 +88,9 @@ InitializeConnexion(_In_ PPROTOCOL protocol,_In_ CHAR* fileName)
 	BOOL res;
 	STATUS status;
 	SECURITY_ATTRIBUTES security;
-
+	HRESULT result;
 	// --- Initializations ---
+	result = S_OK;
 	status = 0;
 	res = TRUE;
 	tempFileName = (char*)malloc(MAX_BUFFER_SIZE * sizeof(char));
@@ -105,9 +106,18 @@ InitializeConnexion(_In_ PPROTOCOL protocol,_In_ CHAR* fileName)
 	}
 
 	protocol->pipeName = fileName;
-	strcpy_s(tempFileName, 13, PREFIX_NAMED_PIPE);
-	strcat(tempFileName, fileName);
-	printf_s("Pipe namefile: %s\n", tempFileName);
+	result = StringCchCopyA(tempFileName, MAX_BUFFER_SIZE, PREFIX_NAMED_PIPE);
+	if(S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto EXIT;
+	}
+	result = StringCchCatA(tempFileName, MAX_BUFFER_SIZE, fileName);
+	if (S_OK != result)
+	{
+		status = STRING_ERROR;
+		goto EXIT;
+	}
 	protocol->pipeHandle = CreateNamedPipeA
 		(
 			tempFileName,												//_In_     LPCTSTR               lpName,
@@ -178,7 +188,6 @@ STATUS  OpenNamedPipe(_In_ CHAR* fileName,_Out_ HANDLE* pipeHandle)
 			0,																//_In_     DWORD                 nDefaultTimeOut,
 			&security														//_In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes
 			);
-	printf_s("Returned code after the named pipe was created: %d", GetLastError());
 	*pipeHandle = handle;
 Exit:
 	free(tempString);

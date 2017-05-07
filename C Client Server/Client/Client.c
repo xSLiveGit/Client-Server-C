@@ -358,7 +358,7 @@ STATUS Start(
 	{
 		TerminateThread(sentPackageForEncryptHandle, THREAD_ERROR);
 		TerminateThread(receivePackageForEncryptHandle, THREAD_ERROR);
-		printf_s("A problem has been occur during encryption process");
+		printf_s("A problem has been occur during encryption process.");
 		goto Exit;
 	}
 	while(nSentedPackages != nReceivedPackages)//Receiver must must write as much bytes as bytes was sent by sender
