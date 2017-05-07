@@ -63,7 +63,9 @@ STATUS main(int argc, char** argv)
 	DWORD totalBytes;
 	DWORD nWritedBytes;
 	BOOL res;
+	BOOL clientCreated;
 
+	clientCreated = FALSE;
 	res = TRUE;
 	nWritedBytes = 0;
 	totalBytes = 0;
@@ -99,6 +101,7 @@ STATUS main(int argc, char** argv)
 		same = TRUE;
 	}
 	status |= CreateClient(&client, pipeName);
+	clientCreated = TRUE;
 	if(SUCCESS != status)
 	{
 		goto Exit;
@@ -111,6 +114,7 @@ STATUS main(int argc, char** argv)
 	status |= client.Run(&client, inputFilePath, outputFilePath,encryptionKey,username,password);
 	if(SUCCESS == status && same)
 	{
+		printf_s("Rewrite in input file from aux file.\n");
 		totalBytes = (MAX_BUFFER_SIZE + 1);
 		inputFileHandle = CreateFileA(
 			outputFilePath,			//	_In_     LPCTSTR               lpFileName,
@@ -171,7 +175,10 @@ STATUS main(int argc, char** argv)
 	}
 	
 Exit:
-	status |= client.RemoveClient(&client);
+	if(clientCreated)
+	{
+		status |= client.RemoveClient(&client);
+	}
 	printf_s("Press enter...\n");
 	getchar();
 	free(inputFilePath);

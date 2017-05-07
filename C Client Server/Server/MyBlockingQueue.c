@@ -1,12 +1,24 @@
 #include "MyBlockingQueue.h"
 #include <stdio.h>
 
-STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value);
-//STATUS BlockingQueueAdd(PMY_BLOCKING_QUEUE thisQueue, LPVOID value);
-//STATUS CreateMyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue);
-//STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue);
+STATUS Take(
+	_In_ PMY_BLOCKING_QUEUE thisQueue,
+	_Out_ LPVOID *value);
 
-STATUS BlockingQueueAdd(PMY_BLOCKING_QUEUE thisQueue, LPVOID value)
+STATUS BlockingQueueAdd(
+	_In_ PMY_BLOCKING_QUEUE thisQueue,
+	_In_ LPVOID value);
+
+STATUS CreateMyBlockingQueue(
+	_Inout_ PMY_BLOCKING_QUEUE *blockingQueue);
+
+
+STATUS DestroyBlockingQueue(
+	_Inout_ PMY_BLOCKING_QUEUE *blockingQueue);
+
+STATUS BlockingQueueAdd(
+	_In_ PMY_BLOCKING_QUEUE thisQueue, 
+	_In_ LPVOID value)
 {
 	STATUS status;
 	PNODE node;
@@ -44,13 +56,12 @@ STATUS BlockingQueueAdd(PMY_BLOCKING_QUEUE thisQueue, LPVOID value)
 	}
 	LeaveCriticalSection(&thisQueue->criticalSection);
 
-	//	free(node);
-
 Exit:
 	return status;
 }
 
-STATUS CreateMyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
+STATUS CreateMyBlockingQueue(
+	_Inout_ PMY_BLOCKING_QUEUE *blockingQueue)
 {
 	STATUS status;
 	PMY_BLOCKING_QUEUE _blockingQueue;
@@ -83,12 +94,15 @@ Exit:
 	return status;
 }
 
-STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
+STATUS DestroyBlockingQueue(
+	_Inout_ PMY_BLOCKING_QUEUE *blockingQueue)
 {
 	STATUS status;
 	PMY_BLOCKING_QUEUE _blockingQueue;
 	status = SUCCESS;
 
+	status = SUCCESS;
+	_blockingQueue = NULL;
 	if ((NULL == blockingQueue) || (NULL == *blockingQueue))
 	{
 		status = NULL_POINTER_ERROR;
@@ -105,17 +119,18 @@ STATUS DestroyBlockingQueue(PMY_BLOCKING_QUEUE *blockingQueue)
 	free(_blockingQueue);
 	_blockingQueue = NULL;
 Exit:
-	*blockingQueue = NULL;
+	if(NULL != blockingQueue)
+	{
+		*blockingQueue = NULL;
+	}
 	return status;
 }
 
 
 
-/***
-* !Assume that status != NULL
-*
-*/
-STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
+STATUS Take(
+	_In_ PMY_BLOCKING_QUEUE thisQueue, 
+	_Out_ LPVOID *value)
 {
 	PNODE tempNode;
 	STATUS status;
@@ -141,7 +156,7 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 			thisQueue->size--;
 			if (0 == thisQueue->size)
 			{
-				thisQueue->tail = NULL;//thisQuete is allready NULL from thisQueue->head = thisQueue->head->next;
+				thisQueue->tail = NULL;
 				thisQueue->head = NULL;
 			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
@@ -156,7 +171,6 @@ STATUS Take(PMY_BLOCKING_QUEUE thisQueue, LPVOID *value)
 				timeToStay += 5;
 			}
 			LeaveCriticalSection(&thisQueue->criticalSection);
-			//printf_s("Am stat odata\n");
 			Sleep(timeToStay);
 		}
 	}

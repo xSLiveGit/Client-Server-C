@@ -31,16 +31,17 @@ STATUS WINAPI ConsoleCommunicationThread(
 	pserver = params.pserver;
 	while (TRUE)
 	{
+		next = 0;//!= '\n'
 		printf_s("%s", infoString);
-		scanf_s("%c", &c);
+		c = getchar();
 		if (next != '\n')
 		{
+			counter = 0;
 			do
 			{
 				counter++;
-				scanf_s("%c", &next);
+				next = getchar();
 			} while (next != '\n');
-			scanf_s("%c", &next);
 
 			if (counter > 1)
 			{
@@ -48,7 +49,6 @@ STATUS WINAPI ConsoleCommunicationThread(
 			}
 		
 			next = 0;
-			counter = 0;
 		}
 		if (c == '1')
 		{

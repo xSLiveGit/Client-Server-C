@@ -48,10 +48,7 @@ char a[][30] = { {"and"} };
 int main(int argc,char** argv)
 {
 	SERVER server;
-	STATUS status = SUCCESS;
-	//PMY_BLOCKING_QUEUE queue;
-
-	//CreateMyBlockingQueue(&queue);
+	STATUS status;
 	CHAR* nWorkers;
 	CHAR* nMaxClient;
 	CHAR* logger;
@@ -60,11 +57,12 @@ int main(int argc,char** argv)
 	LONG nWorkersNumber;
 	CONSOLE_PARAMS consoleParams;
 	HANDLE consoleCommunicationThreadHandle;
-
+	BOOL serverIsCreated;
 	STATUS consoleCommunicationThread;
+
+	serverIsCreated = FALSE;
 	consoleCommunicationThreadHandle = NULL;
 	consoleCommunicationThread = SUCCESS;
-
 	status = SUCCESS;
 	nWorkers = NULL;
 	nMaxClient = NULL;
@@ -85,15 +83,16 @@ int main(int argc,char** argv)
 		printf_s("FAILED TO INITIALIZE SERVER!!!\n");
 		goto Exit;
 	}
+	serverIsCreated = TRUE;
 	nMaxClientsNumber = atoi(nMaxClient);
 	nWorkersNumber = atoi(nWorkers);
 	consoleParams.pserver = &server;
 	consoleCommunicationThreadHandle = CreateThread(
-		NULL,              // no security attribute 
-		0,							// stack size 
+		NULL,								// no security attribute 
+		0,									// stack size 
 		ConsoleCommunicationThread,			// thread proc
-		(&consoleParams),	    // thread parameter 
-		0,						// not suspended 
+		(&consoleParams),					// thread parameter 
+		0,									// not suspended 
 		&consoleCommunicationThread			// returns thread ID
 		);
 	if(NULL == consoleCommunicationThreadHandle)
@@ -104,13 +103,15 @@ int main(int argc,char** argv)
 	status = server.Run(&server, nMaxClientsNumber, nWorkersNumber);
 	if(SUCCESS != status)
 	{
-		printf_s("Rularea nu a avut succes");
+		printf_s("The run operation has been failed.\n");
 	}
 	WaitForSingleObject(consoleCommunicationThreadHandle,INFINITE);
-	printf_s("gata\n");
 	
 Exit:
-	server.RemoveServer(&server);
+	if(serverIsCreated)
+	{
+		server.RemoveServer(&server);
+	}
 	printf_s("Press enter...\n");
 	free(nWorkers);
 	free(nMaxClient);

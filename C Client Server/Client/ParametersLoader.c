@@ -2,7 +2,7 @@
 #include <strsafe.h>
 
 #define DEFAULT_KEY "key"
-
+#define MAX_PARAMETER_SIZE 99
 #define DEFAULT_NAMED_PIPE "numepipe"
 
 BOOL VerySize(CHAR* string)
@@ -13,8 +13,8 @@ BOOL VerySize(CHAR* string)
 	result = S_OK;
 	length = 0;
 
-	result = StringCchLengthA(string, 99, &length);
-	if ((S_OK != result) || (length > 99))
+	result = StringCchLengthA(string, MAX_PARAMETER_SIZE, &length);
+	if ((S_OK != result) || (length > MAX_PARAMETER_SIZE))
 	{
 		return FALSE;
 	}
@@ -42,7 +42,11 @@ STATUS LoadParameters(
 	BOOL isPipe;
 	INT iParameter;
 	HRESULT res;
+	BOOL validSize;
+	UINT size;
 
+	size = 0;
+	validSize = TRUE;
 	res = TRUE;
 	status = SUCCESS;
 	isInputFile = FALSE;
@@ -77,6 +81,12 @@ STATUS LoadParameters(
 
 	for (iParameter = 1; iParameter < argc;iParameter++)
 	{
+		res = StringCchLengthA(argv[iParameter], 99, &size);
+		if(S_OK != res)
+		{
+			status = STRING_ERROR;
+			goto Exit;
+		}
 		if(argv[iParameter][0]!='-' || argv[iParameter][2]!='=')
 		{
 			status = WRONG_ARGUMENTS_STRUCTURE;
@@ -90,8 +100,9 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isInputFile = TRUE;
-			*inputFilePath = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*inputFilePath,strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			
+			*inputFilePath = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*inputFilePath, size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -106,8 +117,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isOutputFile = TRUE;
-			*outputFilePath = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*outputFilePath, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*outputFilePath = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*outputFilePath,size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -122,8 +133,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isPipe = TRUE;
-			*pipeName = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*pipeName, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*pipeName = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*pipeName, size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -138,8 +149,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isUsername = TRUE;
-			*username = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*username, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*username = (CHAR*)malloc(size *sizeof(CHAR));
+			res = StringCchCopyA(*username, size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -154,8 +165,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isPassword = TRUE;
-			*password = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*password, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*password = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*password, size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -170,8 +181,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isEncryptionKey = TRUE;
-			*encryptionKey = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*encryptionKey, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*encryptionKey = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*encryptionKey, size - 2, argv[iParameter] + 3);
 			if(res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -193,8 +204,9 @@ STATUS LoadParameters(
 
 	if(!isOutputFile)
 	{
-		*outputFilePath = (CHAR*)malloc(strlen(*inputFilePath)*sizeof(CHAR) + 2*sizeof(CHAR));
-		res = StringCchCopyA(*outputFilePath, strlen(*inputFilePath) + 1, *inputFilePath);
+		StringCchLengthA(*inputFilePath, MAX_PARAMETER_SIZE, &size);
+		*outputFilePath = (CHAR*)malloc(size*sizeof(CHAR) + 2*sizeof(CHAR));
+		res = StringCchCopyA(*outputFilePath, size + 1, *inputFilePath);
 		if(res != S_OK)
 		{
 				status = STRING_ERROR;

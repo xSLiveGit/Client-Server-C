@@ -38,6 +38,7 @@ typedef struct {
 	LONG *refCounter;
 	PDYNAMIC_VECTOR pDynamicVector;
 	long *nEncryptedBytes;
+	BOOL *flag;
 } PARAMS_LOAD;
 typedef struct _SERVER
 {

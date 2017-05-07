@@ -16,18 +16,18 @@ typedef struct
 	HANDLE openedFileHandle;
 } PARAMS_LOAD;
 
-STATUS 
+STATUS
 OpenConnexion
 (
 	_In_ PCLIENT pclient
-);
+	);
 
-STATUS 
+STATUS
 RemoveClient(
 	_Inout_ PCLIENT pclient
 	);
 
-STATUS 
+STATUS
 Start(
 	_In_ PCLIENT pclient,
 	_In_ CHAR* inputFile,
@@ -37,24 +37,24 @@ Start(
 	_In_ CHAR* password
 	);
 
-STATUS 
+STATUS
 LoginHandler(
-	_In_ CHAR* username, 
-	_In_ CHAR* password, 
+	_In_ CHAR* username,
+	_In_ CHAR* password,
 	_In_ PPROTOCOL protocol);
 
-STATUS 
+STATUS
 CreateClient(
 	_Inout_ PCLIENT pclient,
 	_In_ CHAR* pipeName
 	);
 
-STATUS WINAPI 
+STATUS WINAPI
 ReceiverWorker(
 	_In_ LPVOID parameter
 	);
 
-STATUS WINAPI 
+STATUS WINAPI
 SenderWorker(
 	_In_ LPVOID parameter
 	);
@@ -91,7 +91,7 @@ STATUS
 OpenConnexion
 (
 	_In_ PCLIENT pclient
-)
+	)
 {
 	STATUS status;
 
@@ -103,7 +103,7 @@ OpenConnexion
 STATUS
 RemoveClient(
 	_Inout_ PCLIENT pclient
-)
+	)
 {
 	STATUS status;
 
@@ -114,8 +114,8 @@ RemoveClient(
 }
 
 STATUS Start(
-	_In_ PCLIENT pclient, 
-	_In_ CHAR* inputFile, 
+	_In_ PCLIENT pclient,
+	_In_ CHAR* inputFile,
 	_In_ CHAR* outputFile,
 	_In_ CHAR* encryptionKey,
 	_In_ CHAR* username,
@@ -159,7 +159,7 @@ STATUS Start(
 	secutiry_attributes->lpSecurityDescriptor = NULL;
 	secutiry_attributes->nLength = sizeof(SECURITY_ATTRIBUTES);
 
-	if(NULL == username || NULL == password || NULL == encryptionKey || NULL == inputFile || NULL == outputFile)
+	if (NULL == username || NULL == password || NULL == encryptionKey || NULL == inputFile || NULL == outputFile)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
@@ -174,7 +174,7 @@ STATUS Start(
 		FILE_ATTRIBUTE_NORMAL,	//	_In_     DWORD                 dwFlagsAndAttributes,
 		NULL					//_In_opt_ HANDLE                hTemplateFile
 		);
-	if(INVALID_HANDLE_VALUE == inputFileHandle)
+	if (INVALID_HANDLE_VALUE == inputFileHandle)
 	{
 		printf_s("Invalid input file");
 		status = FILE_ERROR;
@@ -182,7 +182,7 @@ STATUS Start(
 	}
 	totalSize = GetFileSize(inputFileHandle, &totalSize);
 
-	if(NULL == secutiry_attributes)
+	if (NULL == secutiry_attributes)
 	{
 		status = NULL_POINTER_ERROR;
 		goto Exit;
@@ -212,7 +212,7 @@ STATUS Start(
 	//Initi requet
 	request = INITIALIZE_REQUEST;
 	status = pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
@@ -228,7 +228,7 @@ STATUS Start(
 		pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &package, sizeof(package), &readedBytes);
 		package.buffer[package.size] = '\0';
 		StringCchCopyA(newFileName, sizeof(newFileName), package.buffer);
-		Sleep(1000);
+		//Sleep(1000);
 		status = pclient->clientProtocol->InitializeConnexion(pclient->clientProtocol, package.buffer);
 	}
 	else if (REJECTED_CONNECTION_RESPONSE == response)
@@ -246,7 +246,8 @@ STATUS Start(
 	status = LoginHandler(username, password, pclient->clientProtocol);
 	if (status != SUCCESS_LOGIN)
 	{
-		if(USER_ALREADY_CONNECTED == status)
+		printf_s("Status:%d\n",status);
+		if (USER_ALREADY_CONNECTED == status)
 		{
 			printf_s("User is allready connected\n");
 			goto Exit;
@@ -257,9 +258,9 @@ STATUS Start(
 			pclient->clientProtocol->SendPackage(pclient->clientProtocol, &request, sizeof(request));
 			goto Exit;
 		}
-	
+
 	}
-	
+
 	else
 	{
 		printf_s("Successfully login.\n");
@@ -267,17 +268,17 @@ STATUS Start(
 	encrysize = (DWORD)strlen(encryptionKey);
 	status = pclient->clientProtocol->SendPackage(pclient->clientProtocol, encryptionKey, encrysize);
 	//Encryption Area
-	
+
 	//Sender
 	params = (PARAMS_LOAD*)malloc(sizeof(PARAMS_LOAD));
-	if(NULL == params)
+	if (NULL == params)
 	{
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
 	}
 	universalSize = strlen(newFileName) + 3;
 	result = StringCchCopyA(params->filename, universalSize, newFileName);
-	if(S_OK != result)
+	if (S_OK != result)
 	{
 		status = STRING_ERROR;
 		goto Exit;
@@ -290,7 +291,7 @@ STATUS Start(
 	}
 	params->nEncryptedPackages = &nSentedPackages;
 	params->openedFileHandle = inputFileHandle;
-	Sleep(500);//Let server to create the news namedpipes
+	Sleep(500);//Wait for server to create the news namedpipes
 	sentPackageForEncryptHandle = CreateThread(
 		NULL,
 		0,
@@ -346,7 +347,7 @@ STATUS Start(
 		goto Exit;
 	}
 
-	
+
 	WaitForSingleObject(sentPackageForEncryptHandle, INFINITE);
 	status = pclient->clientProtocol->ReadPackage(pclient->clientProtocol, &response, sizeof(response), &readedBytes);
 	if (SUCCESS != status)
@@ -361,7 +362,7 @@ STATUS Start(
 		printf_s("A problem has been occur during encryption process.");
 		goto Exit;
 	}
-	while(nSentedPackages != nReceivedPackages)//Receiver must must write as much bytes as bytes was sent by sender
+	while (nSentedPackages != nReceivedPackages)//Receiver must must write as much bytes as bytes was sent by sender
 	{
 		Sleep(25);
 	}
@@ -458,7 +459,7 @@ LoginHandler(
 		status = WRONG_CREDENTIALS;
 		goto Exit;
 	}
-	if(ALREADY_CONNECTED_RESPONSE == response)
+	if (ALREADY_CONNECTED_RESPONSE == response)
 	{
 		status = USER_ALREADY_CONNECTED;
 		goto Exit;
@@ -504,7 +505,7 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	free((PARAMS_LOAD*)parameter);
 
 	status = CreateProtocol(&protocol);
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
@@ -526,11 +527,11 @@ STATUS WINAPI ReceiverWorker(LPVOID parameter)
 	status = protocol.InitializeConnexion(&protocol, filename);
 	free(filename);
 	filename = NULL;
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
-	while(TRUE)
+	while (TRUE)
 	{
 		status = protocol.SendPackage(&protocol, &request, sizeof(request));
 		if (SUCCESS != status)
@@ -605,7 +606,7 @@ SenderWorker(
 	params.filename[0] = '\0';
 	params.nEncryptedPackages = 0;
 
-	
+
 	params = *((PARAMS_LOAD*)parameter);
 	inputFileHandle = params.openedFileHandle;
 
@@ -614,7 +615,7 @@ SenderWorker(
 
 	universalSize = strlen(params.filename);
 	filename = (CHAR*)malloc((universalSize + 2)*sizeof(CHAR));
-	if(NULL == filename)
+	if (NULL == filename)
 	{
 		status = MALLOC_FAILED_ERROR;
 		goto Exit;
@@ -625,15 +626,15 @@ SenderWorker(
 
 	status = protocol.InitializeConnexion(&protocol, filename);
 	free(filename);
-	if(SUCCESS != status)
+	if (SUCCESS != status)
 	{
 		goto Exit;
 	}
 
-	fileSize = GetFileSize(inputFileHandle,NULL);
-	
+	fileSize = GetFileSize(inputFileHandle, NULL);
+
 	nPackages = fileSize / PACKAGE_SIZE;
-	if(fileSize % PACKAGE_SIZE)
+	if (fileSize % PACKAGE_SIZE)
 	{
 		nPackages++;
 	}

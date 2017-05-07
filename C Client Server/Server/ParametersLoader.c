@@ -3,6 +3,8 @@
 
 #define LOGGER_DEFAULT "logger.txt"
 #define DEFAULT_PIPE "numepipe"
+#define MAX_PARAMETER_SIZE 99
+
 BOOL IsNumber(CHAR* string)
 {
 	unsigned size;
@@ -49,7 +51,9 @@ STATUS LoadParameters(
 	BOOL validSize;
 	INT iParameter;
 	HRESULT res;
+	UINT size;
 
+	size = 0;
 	validSize = TRUE;
 	res = TRUE;
 	status = SUCCESS;
@@ -57,6 +61,7 @@ STATUS LoadParameters(
 	isNMaxClients = FALSE;
 	isPipe = FALSE;
 	isLogger = FALSE;
+
 
 	if ((NULL == argv) || (NULL == nWorkers) || (NULL == nMaxClients) || (NULL == pipeName) ||(NULL == logger))
 	{
@@ -68,6 +73,7 @@ STATUS LoadParameters(
 	*nMaxClients = NULL;
 	*nWorkers = NULL;
 	*logger = NULL;
+
 	for (iParameter = 1; iParameter < argc; iParameter++)
 	{
 		validSize = VerySize(argv[iParameter]);
@@ -80,6 +86,7 @@ STATUS LoadParameters(
 
 	for (iParameter = 1; iParameter < argc; iParameter++)
 	{
+		res = StringCchLengthA(argv[iParameter], MAX_PARAMETER_SIZE, &size);
 		if (argv[iParameter][0] != '-' || argv[iParameter][2] != '=')
 		{
 			status = WRONG_ARGUMENTS_STRUCTURE;
@@ -94,8 +101,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isNWorkers = TRUE;
-			*nWorkers = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*nWorkers, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*nWorkers = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*nWorkers, size - 2, argv[iParameter] + 3);
 			if (res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -110,8 +117,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isPipe = TRUE;
-			*pipeName = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*pipeName, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*pipeName = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*pipeName, size - 2, argv[iParameter] + 3);
 			if (res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -126,8 +133,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isNMaxClients = TRUE;
-			*nMaxClients = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*nMaxClients, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*nMaxClients = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*nMaxClients, size - 2, argv[iParameter] + 3);
 			if (res != S_OK)
 			{
 				status = STRING_ERROR;
@@ -142,8 +149,8 @@ STATUS LoadParameters(
 				goto Exit;
 			}
 			isLogger = TRUE;
-			*logger = (CHAR*)malloc(strlen(argv[iParameter])*sizeof(CHAR));
-			res = StringCchCopyA(*logger, strlen(argv[iParameter]) - 2, argv[iParameter] + 3);
+			*logger = (CHAR*)malloc(size*sizeof(CHAR));
+			res = StringCchCopyA(*logger, size - 2, argv[iParameter] + 3);
 			if (res != S_OK)
 			{
 				status = STRING_ERROR;
